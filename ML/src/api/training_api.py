@@ -143,6 +143,14 @@ class TrainingAPI:
                 'status': 'error',
                 'error': str(e)
             }
+            if target_column not in data.columns:
+                error_msg = f"Target column '{target_column}' not found in data"
+                self.logger.error(error_msg)
+                return {
+                    'session_id': session_id,
+                    'status': 'error',
+                    'error': error_msg
+                }
     
     def configure_training(self, session_id: str, 
                          training_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -170,17 +178,20 @@ class TrainingAPI:
             target_column = training_config.get('target_column')
             if not target_column:
                 raise ValueError("target_column is required")
-            
+
             data = session['data']
             target_validation = self.data_validator.validate_target_column(data, target_column)
-            
+
             # Get recommended features if not specified
             feature_columns = training_config.get('feature_columns')
-            if not feature_columns:
+            if feature_columns is None:
                 dataset_type = session['data_info']['validation'].get('dataset_type')
                 feature_columns = self.data_validator.get_recommended_features(data, dataset_type)
                 self.logger.info(f"Using {len(feature_columns)} recommended features")
-            
+            # Validate feature columns are not empty
+            if feature_columns is None or not isinstance(feature_columns, list) or len(feature_columns) == 0:
+                raise ValueError("No feature columns specified for training.")
+
             # Store training configuration
             session['training_config'] = {
                 'model_type': training_config['model_type'],
@@ -190,9 +201,9 @@ class TrainingAPI:
                 'preprocessing_config': training_config.get('preprocessing_config', {}),
                 'target_validation': target_validation
             }
-            
+
             session['status'] = 'configured'
-            
+
             return {
                 'session_id': session_id,
                 'status': 'success',
@@ -212,25 +223,20 @@ class TrainingAPI:
         try:
             if session_id not in self.current_session:
                 raise ValueError(f"Session {session_id} not found")
-            
             session = self.current_session[session_id]
             if session['status'] != 'configured':
                 raise ValueError("Training must be configured before starting")
-            
             # Initialize progress tracking
             self.training_progress[session_id] = {
                 'status': 'starting',
                 'progress': 0,
                 'current_step': 'Initializing training...'
             }
-            
             # Get data and config
             data = session['data']
             config = session['training_config']
-            
             # Update progress
             self._update_training_progress(session_id, 10, 'Preparing data...')
-            
             # Prepare data
             prepared_data = self.data_processor.prepare_data(
                 data=data,
@@ -238,17 +244,13 @@ class TrainingAPI:
                 feature_columns=config['feature_columns'],
                 preprocessing_config=config['preprocessing_config']
             )
-            
             # Update progress
             self._update_training_progress(session_id, 30, 'Creating model...')
-            
             # Create model
             model = self.model_factory.create_model(config['model_type'])
             model.build_model(**config['hyperparameters'])
-            
             # Update progress
             self._update_training_progress(session_id, 40, 'Training model...')
-            
             # Train model
             training_metrics = model.train(
                 X_train=prepared_data['X_train'],
@@ -256,112 +258,31 @@ class TrainingAPI:
                 X_val=prepared_data.get('X_val'),
                 y_val=prepared_data.get('y_val')
             )
-            
             # Update progress
             self._update_training_progress(session_id, 80, 'Evaluating model...')
-            
             # Evaluate on test set
             evaluation_metrics = model.evaluate(
                 prepared_data['X_test'],
                 prepared_data['y_test']
             )
-            
             # Store results
             session['model'] = model
+            # Always retain prepared_data in the session for downstream API use
             session['prepared_data'] = prepared_data
             session['training_metrics'] = training_metrics
             session['evaluation_metrics'] = evaluation_metrics
             session['status'] = 'completed'
-            
             # Update progress
             self._update_training_progress(session_id, 100, 'Training completed!')
-            
             return {
                 'session_id': session_id,
                 'status': 'success',
                 'training_metrics': training_metrics,
                 'evaluation_metrics': evaluation_metrics
             }
-            
         except Exception as e:
             self.logger.error(f"Error training model for session {session_id}: {str(e)}")
             self._update_training_progress(session_id, -1, f'Error: {str(e)}')
-            return {
-                'session_id': session_id,
-                'status': 'error',
-                'error': str(e)
-            }
-    
-    def get_training_progress(self, session_id: str) -> Dict[str, Any]:
-        """Get current training progress."""
-        if session_id not in self.training_progress:
-            return {
-                'session_id': session_id,
-                'status': 'not_found',
-                'error': 'Training session not found'
-            }
-        
-        return {
-            'session_id': session_id,
-            'status': 'success',
-            'progress': self.training_progress[session_id]
-        }
-    
-    def save_trained_model(self, session_id: str, 
-                          model_name: str,
-                          save_path: str = None) -> Dict[str, Any]:
-        """Save a trained model."""
-        try:
-            if session_id not in self.current_session:
-                raise ValueError(f"Session {session_id} not found")
-            
-            session = self.current_session[session_id]
-            if 'model' not in session or session['status'] != 'completed':
-                raise ValueError("No trained model found in session")
-            
-            # Default save path
-            if save_path is None:
-                from ..config import MODEL_SAVE_DIR
-                MODEL_SAVE_DIR.mkdir(parents=True, exist_ok=True)
-                save_path = str(MODEL_SAVE_DIR / model_name)
-            
-            # Save model
-            model = session['model']
-            model.save_model(save_path)
-            
-            # Save metadata
-            metadata = {
-                'model_name': model_name,
-                'model_type': session['training_config']['model_type'],
-                'training_config': session['training_config'],
-                'training_metrics': session['training_metrics'],
-                'evaluation_metrics': session['evaluation_metrics'],
-                'saved_at': datetime.now().isoformat()
-            }
-            
-            import numpy as np
-            def convert_np(obj):
-                if isinstance(obj, (np.integer,)):
-                    return int(obj)
-                elif isinstance(obj, (np.floating,)):
-                    return float(obj)
-                elif isinstance(obj, (np.ndarray,)):
-                    return obj.tolist()
-                return obj
-
-            metadata_path = f"{save_path}_metadata.json"
-            with open(metadata_path, 'w') as f:
-                json.dump(metadata, f, indent=2, default=convert_np)
-            
-            return {
-                'session_id': session_id,
-                'status': 'success',
-                'model_path': save_path,
-                'metadata_path': metadata_path
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Error saving model for session {session_id}: {str(e)}")
             return {
                 'session_id': session_id,
                 'status': 'error',
@@ -378,13 +299,14 @@ class TrainingAPI:
             }
         session = self.current_session[session_id].copy()
         # Remove large data objects for API response unless requested
-        if not include_data and 'data' in session:
-            del session['data']
-        if 'prepared_data' in session:
-            del session['prepared_data']
-        if 'model' in session:
+        if not include_data:
+            if 'data' in session:
+                del session['data']
+            if 'prepared_data' in session:
+                del session['prepared_data']
+        if 'model' in session and hasattr(session['model'], 'get_model_info'):
             session['model'] = session['model'].get_model_info()
-        # If include_data, return the DataFrame as is (for test script)
+        # Always include prepared_data if include_data is True
         return {
             'session_id': session_id,
             'status': 'success',
@@ -405,3 +327,55 @@ class TrainingAPI:
                 self.training_progress[session_id]['status'] = 'error'
             else:
                 self.training_progress[session_id]['status'] = 'running'
+    
+    def save_trained_model(self, session_id: str, model_name: str, save_path: str = None) -> Dict[str, Any]:
+        """Save a trained model and its metadata."""
+        try:
+            if session_id not in self.current_session:
+                raise ValueError(f"Session {session_id} not found")
+            session = self.current_session[session_id]
+            if 'model' not in session or session['status'] != 'completed':
+                raise ValueError("No trained model found in session")
+            # Default save path
+            if save_path is None:
+                from ..config import MODEL_SAVE_DIR
+                MODEL_SAVE_DIR.mkdir(parents=True, exist_ok=True)
+                save_path = str(MODEL_SAVE_DIR / model_name)
+            # Save model
+            model = session['model']
+            model.save_model(save_path)
+            # Save metadata
+            metadata = {
+                'model_name': model_name,
+                'model_type': session['training_config']['model_type'],
+                'training_config': session['training_config'],
+                'training_metrics': session['training_metrics'],
+                'evaluation_metrics': session['evaluation_metrics'],
+                'saved_at': datetime.now().isoformat()
+            }
+            import numpy as np
+            def convert_np(obj):
+                if isinstance(obj, (np.integer,)):
+                    return int(obj)
+                elif isinstance(obj, (np.floating,)):
+                    return float(obj)
+                elif isinstance(obj, (np.ndarray,)):
+                    return obj.tolist()
+                return obj
+            metadata_path = f"{save_path}_metadata.json"
+            with open(metadata_path, 'w') as f:
+                import json
+                json.dump(metadata, f, indent=2, default=convert_np)
+            return {
+                'session_id': session_id,
+                'status': 'success',
+                'model_path': save_path,
+                'metadata_path': metadata_path
+            }
+        except Exception as e:
+            self.logger.error(f"Error saving model for session {session_id}: {str(e)}")
+            return {
+                'session_id': session_id,
+                'status': 'error',
+                'error': str(e)
+            }
