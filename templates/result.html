@@ -466,7 +466,7 @@
             </div>
             <div class="summary-item">
                 <div class="summary-label">Total Predictions</div>
-                <div class="summary-value" id="totalPredictions">{{ prediction_data|length }}</div>
+                <div class="summary-value" id="totalPredictions">{{ total_predictions }}</div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">Exoplanets Found</div>
@@ -489,9 +489,9 @@
                     <thead>
                         <tr>
                             <th>Instance ID</th>
-                            <th>Period (days)</th>
-                            <th>Transit Duration</th>
-                            <th>Depth (ppm)</th>
+                            <th>{{ (display_columns.period or 'Feature 1')|replace('_', ' ')|title }}</th>
+                            <th>{{ (display_columns.duration or 'Feature 2')|replace('_', ' ')|title }}</th>
+                            <th>{{ (display_columns.depth or 'Feature 3')|replace('_', ' ')|title }}</th>
                             <th>Prediction</th>
                             <th>Confidence</th>
                             <th>Actions</th>
@@ -509,7 +509,7 @@
                                     {{ item.prediction }}
                                 </span>
                             </td>
-                            <td>{{ item.confidence }}%</td>
+                            <td>{% if item.confidence != 'N/A' %}{{ item.confidence }}%{% else %}N/A{% endif %}</td>
                             <td>
                                 <button class="explain-btn" onclick="explainInstance({{ item.id }})">
                                     Explain & Visualize
@@ -526,8 +526,8 @@
                 <!-- Overall Confidence Widget -->
                 <div class="widget confidence-widget">
                     <h3 class="section-title">🎯 Overall Confidence</h3>
-                    <div class="confidence-circle" style="--percentage: {{ overall_confidence * 3.6 }}deg">
-                        <div class="confidence-text">{{ overall_confidence }}%</div>
+                    <div class="confidence-circle" style="--percentage: {{ (overall_confidence if confidence_available else 0) * 3.6 }}deg">
+                        <div class="confidence-text">{% if confidence_available %}{{ overall_confidence }}%{% else %}N/A{% endif %}</div>
                     </div>
                     <p style="color: #b8b8b8; font-size: 0.9rem;">Average prediction confidence across all instances</p>
                 </div>

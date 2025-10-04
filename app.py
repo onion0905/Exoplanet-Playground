@@ -4,6 +4,10 @@ import os
 import time
 import threading
 import uuid
+import pandas as pd
+import numpy as np
+
+from ML.src.api.training_api import TrainingAPI
 
 app = Flask(__name__)
 app.secret_key = 'nasa_hackathon_secret_key_2024'  # For flash messages
@@ -18,6 +22,258 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Global storage for training jobs
 training_jobs = {}
+
+# Initialize ML API
+training_api = TrainingAPI()
+
+# Dataset and model display mappings
+MODEL_DISPLAY_NAMES = {
+    'linear_regression': 'Linear Regression',
+    'svm': 'Support Vector Machine',
+    'decision_tree': 'Decision Tree',
+    'random_forest': 'Random Forest',
+    'xgboost': 'XGBoost',
+    'pca': 'Principal Component Analysis',
+    'neural_network': 'Neural Network',
+    'deep_learning': 'Neural Network'
+}
+
+DATASET_DISPLAY_NAMES = {
+    'kepler': 'Kepler Space Telescope Dataset',
+    'k2': 'K2 Mission Dataset',
+    'tess': 'TESS Survey Dataset',
+    'user': 'User Uploaded Dataset'
+}
+
+TARGET_COLUMN_MAP = {
+    'kepler': 'koi_disposition',
+    'k2': 'disposition',
+    'tess': 'tfopwg_disp'
+}
+
+DISPLAY_FEATURE_MAP = {
+    'kepler': ('koi_period', 'koi_duration', 'koi_depth'),
+    'tess': ('pl_orbper', 'pl_trandurh', 'pl_trandep'),
+    'k2': ('pl_orbper', 'pl_trandurh', 'pl_trandep')
+}
+
+PREDICTION_LABEL_MAP = {
+    'planet': 'Exoplanet',
+    'confirmed': 'Exoplanet',
+    'confirmed_planet': 'Exoplanet',
+    'kp': 'Exoplanet',
+    'candidate': 'Candidate',
+    'planet_candidate': 'Candidate',
+    'pc': 'Candidate',
+    'false_positive': 'False Positive',
+    'fp': 'False Positive',
+    'unknown': 'Unknown'
+}
+
+
+def get_model_display_name(model_type: str) -> str:
+    return MODEL_DISPLAY_NAMES.get(model_type, model_type.replace('_', ' ').title())
+
+
+def get_dataset_display_name(dataset_source: str, dataset_name: str = None) -> str:
+    if dataset_source == 'nasa' and dataset_name:
+        return DATASET_DISPLAY_NAMES.get(dataset_name, dataset_name.title())
+    return DATASET_DISPLAY_NAMES.get(dataset_source, dataset_name.title() if dataset_name else 'Custom Dataset')
+
+
+def map_prediction_label(label: str) -> str:
+    if label is None:
+        return 'Unknown'
+    normalized = str(label).strip().lower()
+    return PREDICTION_LABEL_MAP.get(normalized, str(label).title())
+
+
+def select_display_features(dataset_type: str, feature_columns: list) -> tuple:
+    mapped = DISPLAY_FEATURE_MAP.get(dataset_type, ())
+    selected = [col for col in mapped if col in feature_columns]
+
+    for col in feature_columns:
+        if col not in selected:
+            selected.append(col)
+        if len(selected) >= 3:
+            break
+
+    while len(selected) < 3:
+        selected.append(None)
+
+    return tuple(selected[:3])
+
+
+def format_feature_value(value) -> str:
+    if pd.isna(value):
+        return 'N/A'
+    if isinstance(value, (int, np.integer)):
+        return f"{int(value)}"
+    if isinstance(value, (float, np.floating)):
+        return f"{float(value):.3f}"
+    return str(value)
+
+
+def emit_training_progress(job_id: str, percentage: float, message: str,
+                           phase: int = None, total_phases: int = None,
+                           eta: str = '') -> None:
+    training_jobs[job_id]['progress'] = percentage
+    payload = {
+        'percentage': percentage,
+        'message': message,
+        'eta': eta or '',
+        'phase': phase,
+        'total_phases': total_phases
+    }
+    socketio.emit('training_progress', payload)
+
+
+def generate_prediction_results(training_job_id: str,
+                                prediction_config: dict) -> dict:
+    if training_job_id not in training_jobs:
+        raise ValueError('Training job not found. Please train a model first.')
+
+    training_job = training_jobs[training_job_id]
+    if training_job.get('status') != 'completed':
+        raise ValueError('Training job is not completed yet.')
+
+    session_id = training_job.get('session_id') or training_job_id
+    if session_id not in training_api.current_session:
+        raise ValueError('Training session data not available. Please retrain your model.')
+
+    session = training_api.current_session[session_id]
+    model = session.get('model')
+    if model is None or not getattr(model, 'is_trained', False):
+        raise ValueError('Trained model not available for predictions.')
+
+    feature_columns = session['training_config']['feature_columns']
+    target_column = session['training_config']['target_column']
+
+    dataset_source = prediction_config['prediction_dataset_source']
+    dataset_name = prediction_config.get('prediction_dataset_name')
+    dataset_path = prediction_config.get('prediction_dataset_path')
+
+    if dataset_source == 'nasa':
+        dataset_name = dataset_name or training_job['config'].get('dataset_name')
+        if not dataset_name:
+            raise ValueError('Please select a NASA dataset for predictions.')
+        data_df = training_api.data_loader.load_nasa_dataset(dataset_name)
+    elif dataset_source == 'user':
+        if not dataset_path:
+            raise ValueError('Please upload a CSV file for predictions.')
+        data_df = training_api.data_loader.load_user_dataset(dataset_path)
+    else:
+        raise ValueError(f'Unknown prediction dataset source: {dataset_source}')
+
+    missing_features = [col for col in feature_columns if col not in data_df.columns]
+    if missing_features:
+        missing_preview = ', '.join(missing_features[:5])
+        raise ValueError(f'Missing required features in prediction data: {missing_preview}')
+
+    prediction_features = data_df[feature_columns].copy()
+    processor = training_api.data_processor
+    prediction_features = processor.handle_missing_values(prediction_features, fit=False)
+    prediction_features = processor.encode_categorical_features(prediction_features, fit=False)
+    prediction_features = processor.scale_features(prediction_features, fit=False)
+
+    prediction_features = prediction_features[feature_columns]
+
+    if prediction_features.empty:
+        raise ValueError('Prediction dataset is empty after preprocessing.')
+
+    predictions = model.predict(prediction_features)
+    if len(predictions) == 0:
+        raise ValueError('No prediction results were generated for the provided data.')
+    try:
+        probabilities = model.predict_proba(prediction_features)
+        max_probabilities = probabilities.max(axis=1)
+    except Exception:
+        probabilities = None
+        max_probabilities = None
+
+    dataset_type = training_job['config'].get('dataset_type')
+    display_features = training_job.get('display_features') or select_display_features(dataset_type, feature_columns)
+    display_columns = []
+    for feature in display_features:
+        if feature and feature in data_df.columns:
+            display_columns.append(feature)
+        else:
+            display_columns.append(None)
+
+    fallback_columns = feature_columns + [col for col in data_df.columns if col not in feature_columns]
+    for idx, value in enumerate(display_columns):
+        if value is None:
+            for candidate in fallback_columns:
+                if candidate not in display_columns and candidate != target_column:
+                    display_columns[idx] = candidate
+                    break
+
+    display_labels = {
+        'period': display_columns[0] or (feature_columns[0] if feature_columns else 'Feature 1'),
+        'duration': display_columns[1] if len(display_columns) > 1 and display_columns[1] else (
+            feature_columns[1] if len(feature_columns) > 1 else 'Feature 2'
+        ),
+        'depth': display_columns[2] if len(display_columns) > 2 and display_columns[2] else (
+            feature_columns[2] if len(feature_columns) > 2 else 'Feature 3'
+        )
+    }
+
+    records = []
+    max_records = min(len(data_df), 25)
+    for idx in range(max_records):
+        record = {
+            'id': idx + 1,
+            'period': format_feature_value(data_df.iloc[idx][display_columns[0]]) if display_columns[0] else 'N/A',
+            'duration': format_feature_value(data_df.iloc[idx][display_columns[1]]) if len(display_columns) > 1 and display_columns[1] else 'N/A',
+            'depth': format_feature_value(data_df.iloc[idx][display_columns[2]]) if len(display_columns) > 2 and display_columns[2] else 'N/A',
+            'prediction': map_prediction_label(predictions[idx]),
+            'confidence': round(float(max_probabilities[idx]) * 100, 1) if max_probabilities is not None else 'N/A'
+        }
+        records.append(record)
+
+    label_counts = {}
+    for pred in predictions:
+        label = map_prediction_label(pred)
+        label_counts[label] = label_counts.get(label, 0) + 1
+
+    exoplanets_count = label_counts.get('Exoplanet', 0)
+    false_positives_count = label_counts.get('False Positive', 0)
+    if max_probabilities is not None and len(max_probabilities) > 0:
+        overall_confidence = round(float(np.mean(max_probabilities)) * 100, 1)
+    else:
+        overall_confidence = None
+
+    results_df = data_df.copy()
+    results_df['prediction'] = [map_prediction_label(pred) for pred in predictions]
+    if max_probabilities is not None:
+        results_df['confidence'] = (max_probabilities * 100).round(2)
+        if model.target_classes and probabilities is not None:
+            for class_index, class_name in enumerate(model.target_classes):
+                column_name = f'prob_{class_name}'
+                results_df[column_name] = probabilities[:, class_index]
+
+    output_path = None
+    if prediction_config.get('output_format') == 'csv':
+        output_filename = f"prediction_results_{prediction_config['prediction_job_id']}.csv"
+        output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
+        results_df.to_csv(output_path, index=False)
+
+    return {
+        'records': records,
+        'display_columns': display_labels,
+        'summary': {
+            'label_counts': label_counts,
+            'exoplanets_count': exoplanets_count,
+            'false_positives_count': false_positives_count,
+            'overall_confidence': overall_confidence,
+            'total_predictions': int(len(predictions))
+        },
+        'dataset_name': dataset_name,
+        'dataset_source': dataset_source,
+        'target_column': target_column,
+        'output_file': output_path,
+        'full_results': results_df
+    }
 
 @app.route('/')
 def home():
@@ -35,6 +291,7 @@ def select():
         try:
             # Get dataset choice
             dataset_source = None
+            dataset_name = None
             dataset_path = None
             
             # Check if user uploaded a file
@@ -44,7 +301,8 @@ def select():
                     filename = f"user_upload_{file.filename}"
                     dataset_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                     file.save(dataset_path)
-                    dataset_source = 'user_upload'
+                    dataset_source = 'user'
+                    dataset_name = 'user'
                 else:
                     flash('Please upload a valid CSV file', 'error')
                     return redirect(url_for('select'))
@@ -53,7 +311,7 @@ def select():
             elif 'nasa_dataset' in request.form:
                 nasa_dataset = request.form['nasa_dataset']
                 dataset_source = 'nasa'
-                dataset_path = f"data/{nasa_dataset}_raw.csv"
+                dataset_name = nasa_dataset
             
             else:
                 flash('Please select a dataset or upload a CSV file', 'error')
@@ -132,6 +390,7 @@ def select():
             # Create training configuration
             training_config = {
                 'dataset_source': dataset_source,
+                'dataset_name': dataset_name,
                 'dataset_path': dataset_path,
                 'model_type': model_type,
                 'hyperparameters': hyperparameters
@@ -144,7 +403,11 @@ def select():
                 'config': training_config,
                 'status': 'pending',
                 'progress': 0,
-                'created_at': time.time()
+                'created_at': time.time(),
+                'session_id': None,
+                'training_metrics': None,
+                'evaluation_metrics': None,
+                'display_features': None
             }
             
             # Redirect to training page
@@ -174,18 +437,35 @@ def predict():
         if not job_id or job_id not in training_jobs:
             flash('No training job found. Please start from model selection.', 'error')
             return redirect(url_for('select'))
-        
+
         if training_jobs[job_id]['status'] != 'completed':
             flash('Model training not completed yet. Please wait for training to finish.', 'warning')
             return redirect(url_for('training'))
-        
-        return render_template('predict.html')
-    
+
+        job = training_jobs[job_id]
+        evaluation_metrics = job.get('evaluation_metrics') or {}
+        accuracy = evaluation_metrics.get('accuracy')
+        if isinstance(accuracy, float) and accuracy <= 1:
+            accuracy_display = f"{accuracy * 100:.2f}%"
+        elif accuracy is not None:
+            accuracy_display = str(accuracy)
+        else:
+            accuracy_display = 'N/A'
+
+        model_details = {
+            'type': get_model_display_name(job['config']['model_type']),
+            'dataset': get_dataset_display_name(job['config'].get('dataset_source'), job['config'].get('dataset_name')),
+            'accuracy': accuracy_display
+        }
+
+        return render_template('predict.html', model_details=model_details)
+
     elif request.method == 'POST':
         # Handle prediction form submission
         try:
             # Get prediction dataset choice
             prediction_dataset_source = None
+            prediction_dataset_name = None
             prediction_dataset_path = None
             
             # Check if user uploaded a prediction file
@@ -195,17 +475,18 @@ def predict():
                     filename = f"prediction_upload_{file.filename}"
                     prediction_dataset_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                     file.save(prediction_dataset_path)
-                    prediction_dataset_source = 'user_upload'
+                    prediction_dataset_source = 'user'
+                    prediction_dataset_name = 'user'
                 else:
                     flash('Please upload a valid CSV file for predictions', 'error')
                     return redirect(url_for('predict'))
-            
+
             # Check if user selected NASA dataset for prediction
             elif 'nasa_prediction_dataset' in request.form:
                 nasa_dataset = request.form['nasa_prediction_dataset']
                 prediction_dataset_source = 'nasa'
-                prediction_dataset_path = f"data/{nasa_dataset}_raw.csv"
-            
+                prediction_dataset_name = nasa_dataset
+
             else:
                 flash('Please select a dataset for predictions or upload a CSV file', 'error')
                 return redirect(url_for('predict'))
@@ -224,37 +505,34 @@ def predict():
             prediction_config = {
                 'training_job_id': job_id,
                 'prediction_dataset_source': prediction_dataset_source,
+                'prediction_dataset_name': prediction_dataset_name,
                 'prediction_dataset_path': prediction_dataset_path,
                 'prediction_mode': prediction_mode,
-                'output_format': output_format,
-                'original_config': training_jobs[job_id]['config']
+                'output_format': output_format
             }
-            
+
             # Generate prediction job ID and store configuration
             prediction_job_id = str(uuid.uuid4())
             session['prediction_job_id'] = prediction_job_id
-            
-            # Store prediction job (in real app, this would trigger actual predictions)
+
+            prediction_config['prediction_job_id'] = prediction_job_id
+
+            prediction_results = generate_prediction_results(job_id, prediction_config)
+
             training_jobs[prediction_job_id] = {
                 'config': prediction_config,
-                'status': 'prediction_ready',
+                'status': 'completed',
                 'progress': 100,
                 'created_at': time.time(),
-                'type': 'prediction'
+                'type': 'prediction',
+                'results': prediction_results
             }
-            
-            # In a real application, you would:
-            # 1. Load the trained model from the training job
-            # 2. Load and preprocess the prediction dataset
-            # 3. Make predictions using the trained model
-            # 4. Format results according to output_format
-            # 5. Store results for display in /result
-            
-            flash(f'Prediction configuration saved. Ready to show results.', 'info')
-            
+
+            flash('Predictions generated successfully!', 'info')
+
             # Redirect to results page
             return redirect(url_for('result'))
-            
+
         except Exception as e:
             flash(f'Error processing prediction request: {str(e)}', 'error')
             return redirect(url_for('predict'))
@@ -268,89 +546,42 @@ def result():
         flash('No prediction results found. Please make predictions first.', 'error')
         return redirect(url_for('predict'))
     
-    # Get prediction configuration
-    prediction_config = training_jobs[prediction_job_id]['config']
-    original_config = prediction_config['original_config']
-    
-    # Generate fake prediction data for display
-    fake_prediction_data = [
-        {
-            'id': 1,
-            'period': '3.52',
-            'duration': '6.2h',
-            'depth': '1200',
-            'prediction': 'Exoplanet',
-            'confidence': 94.2
-        },
-        {
-            'id': 2,
-            'period': '89.5',
-            'duration': '13.1h',
-            'depth': '890',
-            'prediction': 'Exoplanet',
-            'confidence': 87.6
-        },
-        {
-            'id': 3,
-            'period': '15.7',
-            'duration': '4.8h',
-            'depth': '2100',
-            'prediction': 'False Positive',
-            'confidence': 76.3
-        },
-        {
-            'id': 4,
-            'period': '7.2',
-            'duration': '8.9h',
-            'depth': '750',
-            'prediction': 'Exoplanet',
-            'confidence': 91.8
-        },
-        {
-            'id': 5,
-            'period': '124.3',
-            'duration': '11.6h',
-            'depth': '1450',
-            'prediction': 'Exoplanet',
-            'confidence': 88.4
-        }
-    ]
-    
-    # Calculate statistics
-    exoplanets_count = sum(1 for item in fake_prediction_data if item['prediction'] == 'Exoplanet')
-    false_positives_count = len(fake_prediction_data) - exoplanets_count
-    overall_confidence = round(sum(item['confidence'] for item in fake_prediction_data) / len(fake_prediction_data), 1)
-    
-    # Model name mapping for display
-    model_names = {
-        'linear_regression': 'Linear Regression',
-        'svm': 'Support Vector Machine',
-        'decision_tree': 'Decision Tree',
-        'random_forest': 'Random Forest',
-        'xgboost': 'XGBoost',
-        'pca': 'Principal Component Analysis',
-        'neural_network': 'Neural Network'
-    }
-    
-    # Dataset name mapping
-    dataset_names = {
-        'kepler': 'Kepler Space Telescope Dataset',
-        'k2': 'K2 Mission Dataset',
-        'tess': 'TESS Survey Dataset',
-        'user_upload': 'User Uploaded Dataset'
-    }
-    
+    prediction_job = training_jobs[prediction_job_id]
+    prediction_results = prediction_job.get('results')
+
+    if not prediction_results:
+        flash('Prediction results are not available. Please rerun the predictions.', 'error')
+        return redirect(url_for('predict'))
+
+    training_job_id = prediction_job['config']['training_job_id']
+    training_job = training_jobs.get(training_job_id)
+    if not training_job:
+        flash('Original training job not found. Please retrain the model.', 'error')
+        return redirect(url_for('select'))
+
+    summary = prediction_results['summary']
+    overall_confidence = summary.get('overall_confidence')
+    overall_confidence_display = round(overall_confidence, 1) if overall_confidence is not None else 0
+
     model_info = {
-        'type': model_names.get(original_config['model_type'], original_config['model_type'].title()),
-        'dataset': dataset_names.get(prediction_config['prediction_dataset_source'], 'Custom Dataset')
+        'type': get_model_display_name(training_job['config']['model_type']),
+        'dataset': get_dataset_display_name(training_job['config'].get('dataset_source'),
+                                            training_job['config'].get('dataset_name'))
     }
-    
-    return render_template('result.html',
-                         prediction_data=fake_prediction_data,
-                         model_info=model_info,
-                         exoplanets_count=exoplanets_count,
-                         false_positives_count=false_positives_count,
-                         overall_confidence=overall_confidence)
+
+    return render_template(
+        'result.html',
+        prediction_data=prediction_results['records'],
+        model_info=model_info,
+        exoplanets_count=summary.get('exoplanets_count', 0),
+        false_positives_count=summary.get('false_positives_count', 0),
+        overall_confidence=overall_confidence_display,
+        confidence_available=overall_confidence is not None,
+        total_predictions=summary.get('total_predictions', 0),
+        display_columns=prediction_results['display_columns'],
+        label_counts=summary.get('label_counts', {}),
+        download_path=prediction_results.get('output_file')
+    )
 
 @app.route('/learn')
 def learn():
@@ -361,120 +592,142 @@ def learn():
         "description": "This endpoint will provide learning resources"
     })
 
-def simulate_training(job_id, socketio):
-    """Simulate training progress over 3 seconds"""
+def run_training_job(job_id: str) -> None:
+    """Run the full training pipeline using the ML training API."""
     if job_id not in training_jobs:
+        socketio.emit('training_error', {'message': 'Training job not found'})
         return
-    
-    config = training_jobs[job_id]['config']
+
+    job = training_jobs[job_id]
+    config = job['config']
     model_type = config['model_type']
     dataset_source = config['dataset_source']
-    
-    # Model name mapping for display
-    model_names = {
-        'linear_regression': 'Linear Regression',
-        'svm': 'Support Vector Machine',
-        'decision_tree': 'Decision Tree',
-        'random_forest': 'Random Forest',
-        'xgboost': 'XGBoost',
-        'pca': 'Principal Component Analysis',
-        'neural_network': 'Neural Network'
-    }
-    
-    # Dataset name mapping
-    dataset_names = {
-        'kepler': 'Kepler Space Telescope Dataset',
-        'k2': 'K2 Mission Dataset', 
-        'tess': 'TESS Survey Dataset',
-        'user_upload': 'User Uploaded Dataset'
-    }
-    
-    model_name = model_names.get(model_type, model_type.title())
-    dataset_name = dataset_names.get(dataset_source, 'Custom Dataset')
-    
-    # Send initial configuration
+    dataset_name = config.get('dataset_name')
+
+    model_display = get_model_display_name(model_type)
+    dataset_display = get_dataset_display_name(dataset_source, dataset_name)
+
     socketio.emit('training_config', {
-        'model_name': model_name,
-        'dataset_name': dataset_name
+        'model_name': model_display,
+        'dataset_name': dataset_display
     })
-    
-    # Training phases
-    phases = [
-        {'name': 'Loading dataset...', 'duration': 0.3},
-        {'name': 'Preprocessing data...', 'duration': 0.5},
-        {'name': 'Splitting train/test sets...', 'duration': 0.2},
-        {'name': 'Initializing model...', 'duration': 0.3},
-        {'name': 'Training model...', 'duration': 1.2},
-        {'name': 'Validating performance...', 'duration': 0.4},
-        {'name': 'Finalizing results...', 'duration': 0.1}
-    ]
-    
-    total_duration = sum(phase['duration'] for phase in phases)
-    elapsed_time = 0
-    
-    training_jobs[job_id]['status'] = 'running'
-    
-    for i, phase in enumerate(phases):
-        if job_id not in training_jobs:
-            break
-            
-        phase_progress = (elapsed_time / total_duration) * 100
-        remaining_time = total_duration - elapsed_time
-        
-        socketio.emit('training_progress', {
-            'percentage': phase_progress,
-            'message': phase['name'],
-            'eta': f'Estimated time remaining: {remaining_time:.1f}s',
-            'phase': i + 1,
-            'total_phases': len(phases)
+
+    try:
+        training_jobs[job_id]['status'] = 'running'
+        training_jobs[job_id]['progress'] = 0
+
+        emit_training_progress(job_id, 5, 'Initializing training session...', 1, 6)
+        training_api.start_training_session(job_id)
+        training_jobs[job_id]['session_id'] = job_id
+
+        emit_training_progress(job_id, 15, 'Loading dataset...', 2, 6)
+        if dataset_source == 'nasa':
+            data_config = {'datasets': [dataset_name] if dataset_name else ['kepler']}
+        elif dataset_source == 'user':
+            if not config.get('dataset_path'):
+                raise ValueError('No dataset file provided for user upload')
+            data_config = {'filepath': config['dataset_path']}
+        else:
+            raise ValueError(f'Unknown dataset source: {dataset_source}')
+
+        load_result = training_api.load_data_for_training(job_id, dataset_source, data_config)
+        if load_result['status'] != 'success':
+            raise ValueError(load_result.get('error', 'Failed to load dataset'))
+
+        session = training_api.current_session[job_id]
+        data = session['data']
+        validation_info = load_result['data_info'].get('validation', {})
+        dataset_type = validation_info.get('dataset_type') or dataset_name
+        training_jobs[job_id]['config']['dataset_type'] = dataset_type
+
+        target_column = config.get('target_column')
+        if not target_column:
+            if dataset_source == 'nasa' and dataset_name in TARGET_COLUMN_MAP:
+                target_column = TARGET_COLUMN_MAP[dataset_name]
+            elif dataset_type in TARGET_COLUMN_MAP:
+                target_column = TARGET_COLUMN_MAP[dataset_type]
+            else:
+                for candidate in TARGET_COLUMN_MAP.values():
+                    if candidate in data.columns:
+                        target_column = candidate
+                        break
+            if not target_column:
+                for candidate in ['label', 'target', 'class', 'outcome', 'status']:
+                    if candidate in data.columns:
+                        target_column = candidate
+                        break
+        if not target_column:
+            raise ValueError('Unable to determine target column for dataset')
+
+        recommended_features = validation_info.get('recommended_features') or []
+        feature_columns = [col for col in recommended_features if col in data.columns]
+
+        if not feature_columns:
+            numeric_cols = data.select_dtypes(include=[np.number]).columns.tolist()
+            feature_columns = [col for col in numeric_cols if col != target_column]
+
+        if not feature_columns:
+            feature_columns = [col for col in data.columns if col != target_column]
+
+        if not feature_columns:
+            raise ValueError('No suitable feature columns found for training')
+
+        config['target_column'] = target_column
+        config['feature_columns'] = feature_columns
+
+        display_features = select_display_features(dataset_type, feature_columns)
+        training_jobs[job_id]['display_features'] = display_features
+
+        emit_training_progress(job_id, 30, 'Configuring training pipeline...', 3, 6)
+        configure_result = training_api.configure_training(job_id, {
+            'model_type': model_type,
+            'target_column': target_column,
+            'feature_columns': feature_columns,
+            'hyperparameters': config.get('hyperparameters', {}),
+            'preprocessing_config': {
+                'handle_missing': True,
+                'missing_strategy': 'median',
+                'scale_features': True,
+                'encode_categorical': True,
+                'remove_outliers': False
+            }
         })
-        
-        # Simulate phase execution with gradual progress updates
-        steps = max(10, int(phase['duration'] * 10))  # At least 10 steps per phase
-        step_duration = phase['duration'] / steps
-        
-        for step in range(steps):
-            if job_id not in training_jobs:
-                break
-                
-            time.sleep(step_duration)
-            elapsed_time += step_duration
-            
-            step_progress = (elapsed_time / total_duration) * 100
-            remaining_time = max(0, total_duration - elapsed_time)
-            
-            socketio.emit('training_progress', {
-                'percentage': min(99, step_progress),  # Cap at 99% until complete
-                'message': phase['name'],
-                'eta': f'Estimated time remaining: {remaining_time:.1f}s',
-                'phase': i + 1,
-                'total_phases': len(phases)
-            })
-    
-    # Mark as completed
-    if job_id in training_jobs:
+
+        if configure_result['status'] != 'success':
+            raise ValueError(configure_result.get('error', 'Failed to configure training'))
+
+        emit_training_progress(job_id, 55, 'Training model...', 4, 6)
+        training_result = training_api.start_training(job_id)
+        if training_result['status'] != 'success':
+            raise ValueError(training_result.get('error', 'Model training failed'))
+
+        emit_training_progress(job_id, 85, 'Evaluating model performance...', 5, 6)
+        training_jobs[job_id]['training_metrics'] = training_result.get('training_metrics')
+        training_jobs[job_id]['evaluation_metrics'] = training_result.get('evaluation_metrics')
+
+        evaluation_metrics = training_result.get('evaluation_metrics', {})
+        accuracy = evaluation_metrics.get('accuracy')
+        if isinstance(accuracy, float) and accuracy <= 1:
+            accuracy_display = f"{accuracy * 100:.2f}%"
+        elif accuracy is not None:
+            accuracy_display = str(accuracy)
+        else:
+            accuracy_display = 'N/A'
+
         training_jobs[job_id]['status'] = 'completed'
-        training_jobs[job_id]['progress'] = 100
-        
-        # Generate mock accuracy based on model type
-        mock_accuracies = {
-            'linear_regression': '85.3%',
-            'svm': '89.7%', 
-            'decision_tree': '82.1%',
-            'random_forest': '91.2%',
-            'xgboost': '93.8%',
-            'pca': '78.5% variance explained',
-            'neural_network': '90.4%'
-        }
-        
-        accuracy = mock_accuracies.get(model_type, '87.6%')
-        
+        emit_training_progress(job_id, 100, 'Training completed!', 6, 6)
+
         socketio.emit('training_complete', {
             'message': 'Training completed successfully!',
-            'accuracy': accuracy,
-            'model_type': model_name,
+            'accuracy': accuracy_display,
+            'model_type': model_display,
             'job_id': job_id
         })
+
+    except Exception as exc:
+        training_jobs[job_id]['status'] = 'error'
+        training_jobs[job_id]['error'] = str(exc)
+        socketio.emit('training_error', {'message': str(exc)})
 
 # WebSocket event handlers
 @socketio.on('connect')
@@ -494,12 +747,14 @@ def handle_start_training():
         emit('training_error', {'message': 'No valid training job found'})
         return
     
-    if training_jobs[job_id]['status'] != 'pending':
+    if training_jobs[job_id]['status'] not in ['pending', 'error']:
         emit('training_error', {'message': 'Training job already started or completed'})
         return
-    
-    # Start training simulation in background thread
-    thread = threading.Thread(target=simulate_training, args=(job_id, socketio))
+
+    training_jobs[job_id]['status'] = 'pending'
+
+    # Start training in background thread
+    thread = threading.Thread(target=run_training_job, args=(job_id,))
     thread.daemon = True
     thread.start()
 

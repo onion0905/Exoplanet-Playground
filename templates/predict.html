@@ -311,15 +311,15 @@
                 <div class="model-details">
                     <div class="detail-item">
                         <div class="detail-label">Model Type</div>
-                        <div class="detail-value" id="modelType">Loading...</div>
+                        <div class="detail-value">{{ model_details.type }}</div>
                     </div>
                     <div class="detail-item">
                         <div class="detail-label">Training Dataset</div>
-                        <div class="detail-value" id="trainingDataset">Loading...</div>
+                        <div class="detail-value">{{ model_details.dataset }}</div>
                     </div>
                     <div class="detail-item">
                         <div class="detail-label">Training Accuracy</div>
-                        <div class="detail-value" id="trainingAccuracy">Loading...</div>
+                        <div class="detail-value">{{ model_details.accuracy }}</div>
                     </div>
                     <div class="detail-item">
                         <div class="detail-label">Status</div>
@@ -486,17 +486,6 @@
 
         // Load model information from session storage or previous page
         document.addEventListener('DOMContentLoaded', () => {
-            // Mock data - in real app, this would come from the server
-            const modelInfo = {
-                type: 'Random Forest',
-                dataset: 'Kepler Space Telescope Dataset',
-                accuracy: '91.2%'
-            };
-            
-            document.getElementById('modelType').textContent = modelInfo.type;
-            document.getElementById('trainingDataset').textContent = modelInfo.dataset;
-            document.getElementById('trainingAccuracy').textContent = modelInfo.accuracy;
-            
             checkFormValidity();
         });
     </script>
