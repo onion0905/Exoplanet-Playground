@@ -2,64 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>NASA OHHHHHHH</title>
+<title>Exoplanet</title>
     <style>
         body { margin: 0; background: black; overflow: hidden; }
         canvas { display: block; }
         /* GPT 好會寫 css */
-        button {
-            padding: 5px 18px;
-            margin: 12px;
-            font-size: 18px;
-            font-family: "Segoe UI", Roboto, sans-serif;
-            font-weight: 600;
-            color: #ffffff;
-            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); /* 深藍星空漸層 */
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 14px;
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-
-            /* 光暈 + 立體感 */
-            box-shadow: 0 0 15px rgba(0, 180, 255, 0.5), inset 0 0 10px rgba(255, 255, 255, 0.1);
-
-            /* 動畫過渡 */
-            transition: all 0.3s ease-in-out;
+        .hud {
+        position: fixed; left: 12px; bottom: 12px; color: #cfe9ff; font: 12px/1.4 system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans", sans-serif;
+        background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 12px; backdrop-filter: blur(6px);
         }
-
-        /* 背景星塵效果 */
-        button::before {
-            content: "";
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(0,200,255,0.4) 0%, transparent 70%);
-            transform: rotate(25deg);
-            opacity: 0.4;
-            transition: all 0.5s ease-in-out;
-        }
-
-        /* hover 時加強發光 + 漸層變亮 */
-        button:hover {
-            color: #00eaff;
-            border-color: rgba(0, 234, 255, 0.8);
-            box-shadow: 0 0 25px rgba(0, 234, 255, 0.9), inset 0 0 15px rgba(0, 234, 255, 0.3);
-            background: linear-gradient(135deg, #1a2a6c, #2b5876, #4e4376);
-        }
-
-        button:hover::before {
-            opacity: 0.8;
-            transform: rotate(45deg) scale(1.2);
-        }
-
-        /* active 按壓效果 */
-        button:active {
-            transform: scale(0.96);
-            box-shadow: 0 0 15px rgba(0, 180, 255, 0.6), inset 0 0 12px rgba(0, 180, 255, 0.4);
-        }
+        .hud kbd { padding: 1px 6px; border: 1px solid rgba(255,255,255,.25); border-bottom-width: 2px; border-radius: 6px; background: rgba(255,255,255,.05); color: #fff; }
     </style>
     <script type="importmap">
     {
@@ -71,6 +23,11 @@
     </script>
     </head>
     <body>
+
+    <div class="hud">
+        <div><strong>Controls</strong></div>
+        <div><kbd>Space</kbd> pause / play</div>
+    </div>
         
     <button id="btnHaumea">Haumea</button>
     <button id="btnEarth">Earth</button>
@@ -87,7 +44,7 @@
     camera.position.set(0, 2.5, 10);
     camera.lookAt(0, 0, 0);
 
-    const pointLight = new THREE.PointLight(0xffffff, 3000, 100, 2);
+    const pointLight = new THREE.PointLight(0xffffff, 3000, 1000, 2);
     pointLight.position.set(-9, 10, -8);
     scene.add(pointLight);
 
@@ -141,7 +98,7 @@
     const bloomPass = new UnrealBloomPass(
         new THREE.Vector2(window.innerWidth, window.innerHeight),
         0.9,
-        0.0,
+        0.6,
         0.0
     );
     const bloomComposer = new EffectComposer(renderer);
@@ -199,10 +156,17 @@
         finalComposer.setSize(window.innerWidth, window.innerHeight);
     });
 
+    let paused = false;
+
+    window.addEventListener('keydown', e => {
+        if (e.code === 'Space') paused = !paused;
+    });
 
     function animate() {
         requestAnimationFrame(animate);
-        planet.rotation.y += 0.005;
+
+        if (!paused)
+            planet.rotation.y += 0.005;
 
         const bgBackup = scene.background;
         
