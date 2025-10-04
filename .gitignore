@@ -4,3 +4,11 @@
 .vscode
 NASA-Hackathon-Fake
 __pycache__/
+
+# Model files and user-generated models
+ML/models/user/
+ML/models/user/**
+# Prevent pushing any joblib, pkl, or keras model files
+*.joblib
+*.pkl
+*.keras

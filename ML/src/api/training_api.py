@@ -66,7 +66,6 @@ class TrainingAPI:
                     data = self.data_loader.load_nasa_dataset(dataset_names[0])
                 else:
                     data = self.data_loader.combine_datasets(dataset_names)
-                    
             elif data_source == 'user':
                 # Load user-uploaded data
                 filepath = data_config.get('filepath')
@@ -75,10 +74,49 @@ class TrainingAPI:
                 data = self.data_loader.load_user_dataset(filepath)
             else:
                 raise ValueError(f"Unknown data source: {data_source}")
-            
+
+            # --- FILTER: Only keep CONFIRMED and FALSE POSITIVE ---
+            target_column = data_config.get('target_column')
+            allowed = None
+            if not target_column:
+                # Try to guess from known datasets
+                if data_source == 'nasa':
+                    ds = dataset_names[0].lower()
+                    if ds == 'kepler':
+                        target_column = 'koi_disposition'
+                        allowed = {'CONFIRMED', 'FALSE POSITIVE'}
+                    elif ds == 'k2':
+                        target_column = 'disposition'
+                        allowed = {'CONFIRMED', 'FALSE POSITIVE'}
+                    elif ds == 'tess':
+                        target_column = 'tfopwg_disp'
+                        allowed = {'CP', 'FP'}
+                    else:
+                        target_column = data.columns[-1]
+                        allowed = None
+                else:
+                    target_column = data.columns[-1]
+                    allowed = None
+            else:
+                # If user provides, try to infer allowed
+                if target_column.lower().startswith('koi'):
+                    allowed = {'CONFIRMED', 'FALSE POSITIVE'}
+                elif target_column.lower().startswith('tfopwg'):
+                    allowed = {'CP', 'FP'}
+                elif target_column.lower() == 'disposition':
+                    allowed = {'CONFIRMED', 'FALSE POSITIVE'}
+                else:
+                    allowed = None
+
+            if target_column in data.columns and allowed:
+                before = len(data)
+                data = data[data[target_column].isin(allowed)].copy()
+                after = len(data)
+                self.logger.info(f"Filtered {before-after} rows: only {allowed} in {target_column}")
+
             # Validate data
             validation_results = self.data_validator.validate_data_format(data)
-            
+
             # Store data info in session
             data_info = {
                 'shape': data.shape,
@@ -88,17 +126,16 @@ class TrainingAPI:
                 'missing_values': data.isnull().sum().to_dict(),
                 'dtypes': data.dtypes.astype(str).to_dict()
             }
-            
+
             self.current_session[session_id]['data'] = data
             self.current_session[session_id]['data_info'] = data_info
             self.current_session[session_id]['status'] = 'data_loaded'
-            
+
             return {
                 'session_id': session_id,
                 'status': 'success',
                 'data_info': data_info
             }
-            
         except Exception as e:
             self.logger.error(f"Error loading data for session {session_id}: {str(e)}")
             return {
@@ -302,9 +339,19 @@ class TrainingAPI:
                 'saved_at': datetime.now().isoformat()
             }
             
+            import numpy as np
+            def convert_np(obj):
+                if isinstance(obj, (np.integer,)):
+                    return int(obj)
+                elif isinstance(obj, (np.floating,)):
+                    return float(obj)
+                elif isinstance(obj, (np.ndarray,)):
+                    return obj.tolist()
+                return obj
+
             metadata_path = f"{save_path}_metadata.json"
             with open(metadata_path, 'w') as f:
-                json.dump(metadata, f, indent=2)
+                json.dump(metadata, f, indent=2, default=convert_np)
             
             return {
                 'session_id': session_id,
@@ -321,25 +368,23 @@ class TrainingAPI:
                 'error': str(e)
             }
     
-    def get_session_info(self, session_id: str) -> Dict[str, Any]:
-        """Get information about a training session."""
+    def get_session_info(self, session_id: str, include_data: bool = False) -> Dict[str, Any]:
+        """Get information about a training session. Set include_data=True to include filtered data (for testing)."""
         if session_id not in self.current_session:
             return {
                 'session_id': session_id,
                 'status': 'not_found',
                 'error': 'Session not found'
             }
-        
         session = self.current_session[session_id].copy()
-        
-        # Remove large data objects for API response
-        if 'data' in session:
+        # Remove large data objects for API response unless requested
+        if not include_data and 'data' in session:
             del session['data']
         if 'prepared_data' in session:
             del session['prepared_data']
         if 'model' in session:
             session['model'] = session['model'].get_model_info()
-        
+        # If include_data, return the DataFrame as is (for test script)
         return {
             'session_id': session_id,
             'status': 'success',
