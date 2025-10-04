@@ -32,6 +32,80 @@ def print_header(msg):
     print("="*40)
 
 def main():
+    # 6. Try loading a non-existent model
+    print_header("6. Error handling: load non-existent model")
+    try:
+        pred_api.predict("/tmp/nonexistent_model.joblib", [sample])
+        print("FAIL: No error when loading non-existent model")
+    except Exception as e:
+        print(f"PASS: Correctly failed to load non-existent model: {e}")
+
+    # 7. Try predicting with wrong feature set
+    print_header("7. Error handling: predict with wrong features")
+    try:
+        wrong_sample = {"not_a_feature": 123}
+        pred_api.predict(model_path, [wrong_sample])
+        print("FAIL: No error when predicting with wrong features")
+    except Exception as e:
+        print(f"PASS: Correctly failed to predict with wrong features: {e}")
+
+    # 8. Test model metadata file
+    print_header("8. Model metadata file")
+    if os.path.exists(metadata_path):
+        import json
+        with open(metadata_path) as f:
+            meta = json.load(f)
+        if "model_type" in meta and "training_config" in meta:
+            print("PASS: Metadata file contains expected keys.")
+        else:
+            print("FAIL: Metadata file missing expected keys.")
+    else:
+        print("FAIL: Metadata file not found.")
+
+    # 9. Edge case: configure with empty feature columns
+    print_header("9. Edge case: empty feature columns")
+    session_id3 = f"session-{uuid.uuid4().hex[:8]}"
+    train_api.start_training_session(session_id3)
+    train_api.load_data_for_training(
+        session_id3,
+        data_source="nasa",
+        data_config={"datasets": ["kepler"], "target_column": "koi_disposition"}
+    )
+    try:
+        train_api.configure_training(
+            session_id3,
+            training_config={
+                "model_type": "random_forest",
+                "target_column": "koi_disposition",
+                "feature_columns": []
+            }
+        )
+        train_api.start_training(session_id3)
+        print("FAIL: No error when training with empty feature columns")
+    except Exception as e:
+        print(f"PASS: Correctly failed to train with empty feature columns: {e}")
+
+    # 10. Edge case: wrong target column
+    print_header("10. Edge case: wrong target column")
+    session_id4 = f"session-{uuid.uuid4().hex[:8]}"
+    train_api.start_training_session(session_id4)
+    train_api.load_data_for_training(
+        session_id4,
+        data_source="nasa",
+        data_config={"datasets": ["kepler"], "target_column": "not_a_column"}
+    )
+    try:
+        train_api.configure_training(
+            session_id4,
+            training_config={
+                "model_type": "random_forest",
+                "target_column": "not_a_column"
+            }
+        )
+        train_api.start_training(session_id4)
+        print("FAIL: No error when training with wrong target column")
+    except Exception as e:
+        print(f"PASS: Correctly failed to train with wrong target column: {e}")
     # 1. Train a model and save to ML/models/user
     print_header("1. Train a model and save it")
     train_api = TrainingAPI()
