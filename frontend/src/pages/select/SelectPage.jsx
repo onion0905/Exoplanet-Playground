@@ -24,7 +24,9 @@ function SelectPage() {
   const [selectedDataset, setSelectedDataset] = useState('kepler');
   const [selectedModel, setSelectedModel] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
+  const [uploadedTestFile, setUploadedTestFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
+  const [dragActiveTest, setDragActiveTest] = useState(false);
   const [hyperparameters, setHyperparameters] = useState({});
 
   const datasets = [
@@ -108,10 +110,18 @@ function SelectPage() {
     }
   };
 
+  const handleTestFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type === 'text/csv') {
+      setUploadedTestFile(file);
+    }
+  };
+
   const handleDataSourceChange = (source) => {
     setDataSource(source);
     if (source === 'nasa') {
       setUploadedFile(null);
+      setUploadedTestFile(null);
       // 重置為第一個 NASA 數據集
       setSelectedDataset('kepler');
     } else {
@@ -150,6 +160,29 @@ function SelectPage() {
     }
   };
 
+  const handleTestDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActiveTest(true);
+    } else if (e.type === "dragleave") {
+      setDragActiveTest(false);
+    }
+  };
+
+  const handleTestDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActiveTest(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type === 'text/csv') {
+        setUploadedTestFile(file);
+      }
+    }
+  };
+
   const handleStartTraining = () => {
     navigate("/training");
   };
@@ -157,18 +190,18 @@ function SelectPage() {
   // 計算當前可以到達的最大步驟
   const getMaxStep = () => {
     if (dataSource === 'nasa' && selectedDataset) return 3;
-    if (dataSource === 'user' && uploadedFile) return 3;
+    if (dataSource === 'user' && uploadedFile && uploadedTestFile) return 3;
     if (dataSource === 'nasa' || dataSource === 'user') return 2;
     return 1;
   };
 
   const maxStep = getMaxStep();
-  const isTrainingReady = selectedModel && (selectedDataset || uploadedFile) && currentStep === 3;
+  const isTrainingReady = selectedModel && (selectedDataset || (uploadedFile && uploadedTestFile)) && currentStep === 3;
 
   // 檢查是否可以進入下一步
   const canGoToNextStep = () => {
     if (currentStep === 1) {
-      return (dataSource === 'nasa' && selectedDataset) || (dataSource === 'user' && uploadedFile);
+      return (dataSource === 'nasa' && selectedDataset) || (dataSource === 'user' && uploadedFile && uploadedTestFile);
     }
     if (currentStep === 2) {
       return selectedModel !== '';
@@ -389,84 +422,177 @@ function SelectPage() {
                     </div>
                     <h3 className="text-white text-xl font-semibold">Upload Your Data</h3>
                   </div>
-                  <div
-                    className={`border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 backdrop-blur-sm ${
-                      dragActive 
-                        ? 'border-blue-400 bg-gradient-to-br from-blue-500/20 to-blue-600/10 shadow-lg shadow-blue-500/20' 
-                        : 'border-gray-500/50 bg-gradient-to-br from-gray-700/30 to-gray-800/30 hover:border-gray-400 hover:bg-gradient-to-br hover:from-gray-600/40 hover:to-gray-700/40'
-                    }`}
-                    onDragEnter={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDragOver={handleDrag}
-                    onDrop={handleDrop}
-                  >
-                    <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-gray-600/50 to-gray-700/50 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-gray-500/30">
-                      <CloudUploadIcon className="text-3xl text-gray-300" />
-                    </div>
-                    <p className="text-white mb-4 text-lg font-medium">Drag and drop your CSV file here</p>
-                    <input
-                      type="file"
-                      accept=".csv"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                      id="file-upload"
-                    />
-                    <label htmlFor="file-upload">
-                      <Button
-                        variant="outlined"
-                        component="span"
-                        sx={{
-                          color: 'white',
-                          borderColor: 'rgba(255, 255, 255, 0.3)',
-                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                          backdropFilter: 'blur(10px)',
-                          px: 4,
-                          py: 1.5,
-                          fontSize: '1rem',
-                          fontWeight: 500,
-                          borderRadius: '12px',
-                          '&:hover': {
-                            borderColor: 'rgba(255, 255, 255, 0.5)',
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            transform: 'translateY(-1px)',
-                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
-                          }
-                        }}
+                  
+                  {/* Grid layout for training and testing data */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Training Data Upload */}
+                    <div className="space-y-2">
+                      <h4 className="text-white text-lg font-medium mb-4">Training Data</h4>
+                      <div
+                        className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 backdrop-blur-sm ${
+                          dragActive 
+                            ? 'border-blue-400 bg-gradient-to-br from-blue-500/20 to-blue-600/10 shadow-lg shadow-blue-500/20' 
+                            : 'border-gray-500/50 bg-gradient-to-br from-gray-700/30 to-gray-800/30 hover:border-gray-400 hover:bg-gradient-to-br hover:from-gray-600/40 hover:to-gray-700/40'
+                        }`}
+                        onDragEnter={handleDrag}
+                        onDragLeave={handleDrag}
+                        onDragOver={handleDrag}
+                        onDrop={handleDrop}
                       >
-                        Choose File
-                      </Button>
-                    </label>
-                    <p className="text-gray-400 text-sm mt-4">
-                      Supported format: CSV files with exoplanet data
-                    </p>
-                    {uploadedFile && (
-                      <div className="mt-6 p-4 bg-gradient-to-r from-green-500/20 to-green-600/20 border border-green-400/30 rounded-xl backdrop-blur-sm">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center mr-3">
-                              <span className="text-white text-xs">✓</span>
-                            </div>
-                            <span className="text-green-200 text-sm font-medium">{uploadedFile.name}</span>
-                          </div>
+                        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-gray-600/50 to-gray-700/50 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-gray-500/30">
+                          <CloudUploadIcon className="text-2xl text-gray-300" />
+                        </div>
+                        <p className="text-white mb-3 text-base font-medium">Training CSV</p>
+                        <input
+                          type="file"
+                          accept=".csv"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                          id="training-file-upload"
+                        />
+                        <label htmlFor="training-file-upload">
                           <Button
+                            variant="outlined"
+                            component="span"
                             size="small"
-                            onClick={() => setUploadedFile(null)}
                             sx={{
-                              color: 'rgba(255, 255, 255, 0.7)',
-                              minWidth: 'auto',
-                              padding: '4px 8px',
+                              color: 'white',
+                              borderColor: 'rgba(255, 255, 255, 0.3)',
+                              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                              backdropFilter: 'blur(10px)',
+                              px: 3,
+                              py: 1,
+                              fontSize: '0.875rem',
+                              fontWeight: 500,
+                              borderRadius: '10px',
                               '&:hover': {
-                                color: 'white',
-                                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                                borderColor: 'rgba(255, 255, 255, 0.5)',
+                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
                               }
                             }}
                           >
-                            ✕
+                            Choose File
                           </Button>
-                        </div>
+                        </label>
+                        {uploadedFile && (
+                          <div className="mt-4 p-3 bg-gradient-to-r from-green-500/20 to-green-600/20 border border-green-400/30 rounded-xl backdrop-blur-sm">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-2">
+                                  <span className="text-white text-xs">✓</span>
+                                </div>
+                                <span className="text-green-200 text-sm font-medium">{uploadedFile.name}</span>
+                              </div>
+                              <Button
+                                size="small"
+                                onClick={() => setUploadedFile(null)}
+                                sx={{
+                                  color: 'rgba(255, 255, 255, 0.7)',
+                                  minWidth: 'auto',
+                                  padding: '2px 6px',
+                                  fontSize: '0.75rem',
+                                  '&:hover': {
+                                    color: 'white',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                                  }
+                                }}
+                              >
+                                ✕
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
+
+                    {/* Testing Data Upload */}
+                    <div className="space-y-2">
+                      <h4 className="text-white text-lg font-medium mb-4">Testing Data</h4>
+                      <div
+                        className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 backdrop-blur-sm ${
+                          dragActiveTest 
+                            ? 'border-purple-400 bg-gradient-to-br from-purple-500/20 to-purple-600/10 shadow-lg shadow-purple-500/20' 
+                            : 'border-gray-500/50 bg-gradient-to-br from-gray-700/30 to-gray-800/30 hover:border-gray-400 hover:bg-gradient-to-br hover:from-gray-600/40 hover:to-gray-700/40'
+                        }`}
+                        onDragEnter={handleTestDrag}
+                        onDragLeave={handleTestDrag}
+                        onDragOver={handleTestDrag}
+                        onDrop={handleTestDrop}
+                      >
+                        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-gray-600/50 to-gray-700/50 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-gray-500/30">
+                          <CloudUploadIcon className="text-2xl text-gray-300" />
+                        </div>
+                        <p className="text-white mb-3 text-base font-medium">Testing CSV</p>
+                        <input
+                          type="file"
+                          accept=".csv"
+                          onChange={handleTestFileUpload}
+                          className="hidden"
+                          id="testing-file-upload"
+                        />
+                        <label htmlFor="testing-file-upload">
+                          <Button
+                            variant="outlined"
+                            component="span"
+                            size="small"
+                            sx={{
+                              color: 'white',
+                              borderColor: 'rgba(255, 255, 255, 0.3)',
+                              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                              backdropFilter: 'blur(10px)',
+                              px: 3,
+                              py: 1,
+                              fontSize: '0.875rem',
+                              fontWeight: 500,
+                              borderRadius: '10px',
+                              '&:hover': {
+                                borderColor: 'rgba(255, 255, 255, 0.5)',
+                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+                              }
+                            }}
+                          >
+                            Choose File
+                          </Button>
+                        </label>
+                        {uploadedTestFile && (
+                          <div className="mt-4 p-3 bg-gradient-to-r from-purple-500/20 to-purple-600/20 border border-purple-400/30 rounded-xl backdrop-blur-sm">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                <div className="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center mr-2">
+                                  <span className="text-white text-xs">✓</span>
+                                </div>
+                                <span className="text-purple-200 text-sm font-medium">{uploadedTestFile.name}</span>
+                              </div>
+                              <Button
+                                size="small"
+                                onClick={() => setUploadedTestFile(null)}
+                                sx={{
+                                  color: 'rgba(255, 255, 255, 0.7)',
+                                  minWidth: 'auto',
+                                  padding: '2px 6px',
+                                  fontSize: '0.75rem',
+                                  '&:hover': {
+                                    color: 'white',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                                  }
+                                }}
+                              >
+                                ✕
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
+                  
+                  <p className="text-gray-400 text-sm mt-6 text-center">
+                    Supported format: CSV files with exoplanet data. Both training and testing data are required.
+                  </p>
                 </div>
               )}
             </div>

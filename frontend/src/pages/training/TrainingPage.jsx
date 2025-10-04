@@ -41,8 +41,8 @@ function TrainingPage() {
         if (currentStepIndex === trainingSteps.length - 1) {
           setIsComplete(true);
           setTimeout(() => {
-            navigate("/predict");
-          }, 2000); // 2秒後跳轉到 predict 頁面
+            navigate("/result");
+          }, 2000); // 2秒後跳轉到 result 頁面
         }
         
         currentStepIndex++;
@@ -140,7 +140,7 @@ function TrainingPage() {
                 <span className="text-white text-sm">✓</span>
               </div>
               <Typography variant="body1" className="text-green-200 font-medium">
-                Training completed! Redirecting to prediction page...
+                Training completed! Redirecting to results page...
               </Typography>
             </div>
           </div>

@@ -215,7 +215,7 @@ function ResultPage() {
                   <Button
                     variant="outlined"
                     startIcon={<AddIcon />}
-                    onClick={() => navigate("/predict")}
+                    onClick={() => navigate("/select")}
                     sx={{
                       color: 'white',
                       borderColor: 'rgba(255, 255, 255, 0.3)',
@@ -225,7 +225,7 @@ function ResultPage() {
                       }
                     }}
                   >
-                    Add Test Data
+                    Train New Model
                   </Button>
                   <Button
                     variant="contained"
@@ -348,24 +348,6 @@ function ResultPage() {
 
         {/* 底部操作按鈕 */}
         <div className="flex justify-center gap-6 mb-10">
-          <Button
-            variant="outlined"
-            size="large"
-            onClick={() => navigate("/predict")}
-            sx={{
-              color: '#f5eff7',
-              borderColor: '#f5eff7',
-              px: 4,
-              py: 2,
-              fontSize: '1.125rem',
-              '&:hover': {
-                borderColor: '#f5eff7',
-                backgroundColor: 'rgba(245, 239, 247, 0.1)'
-              }
-            }}
-          >
-            New Prediction
-          </Button>
           <Button
             variant="outlined"
             size="large"
