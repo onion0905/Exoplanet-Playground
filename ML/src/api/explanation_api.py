@@ -11,10 +11,10 @@ from ..api.prediction_api import PredictionAPI
 class ExplanationAPI:
     """API interface for explaining model predictions and feature importance."""
     
-    def __init__(self):
+    def __init__(self, prediction_api=None):
         self.feature_analyzer = FeatureImportanceAnalyzer()
         self.column_dropper = ColumnDropper()
-        self.prediction_api = PredictionAPI()
+        self.prediction_api = prediction_api or PredictionAPI()
         self.logger = logging.getLogger(__name__)
         
         # Cache for explanation results

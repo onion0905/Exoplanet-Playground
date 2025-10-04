@@ -40,8 +40,9 @@ class ExoplanetMLAPI:
         self.data_processor = DataProcessor()
         self.model_factory = ModelFactory()
         
-        # Ensure directories exist
-        self.models_dir = Path("models")
+        # Ensure directories exist - use ML project directory
+        ml_project_root = Path(__file__).parent.parent.parent
+        self.models_dir = ml_project_root / "models"
         self.pretrained_dir = self.models_dir / "pretrained"
         self.user_dir = self.models_dir / "user"
         
@@ -161,6 +162,7 @@ class ExoplanetMLAPI:
                 model_name = f"{model_type}_{dataset_name}_{int(time.time())}"
             
             model_path = self.user_dir / f"{model_name}.joblib"
+            
             model.save_model(str(model_path))
             
             # Save metadata
