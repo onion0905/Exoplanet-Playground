@@ -16,7 +16,7 @@ Explore NASA exoplanet missions, build machine-learning models, and visualize pr
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/your-org/NASA-Hackathon-me-test.git
+git clone https://github.com/your-org/Exoplanet-Playground.git
 cd NASA-Hackathon-me-test
 ```
 
