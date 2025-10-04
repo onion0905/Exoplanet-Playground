@@ -1,0 +1,179 @@
+{
+  "model_name": "linear_regression",
+  "dataset_name": "kepler",
+  "training_time": 0.4743328094482422,
+  "feature_names": [
+    "koi_period",
+    "koi_period_err1",
+    "koi_period_err2",
+    "koi_time0bk",
+    "koi_time0bk_err1",
+    "koi_time0bk_err2",
+    "koi_impact",
+    "koi_impact_err1",
+    "koi_impact_err2",
+    "koi_duration",
+    "koi_duration_err1",
+    "koi_duration_err2",
+    "koi_depth",
+    "koi_depth_err1",
+    "koi_depth_err2",
+    "koi_prad",
+    "koi_prad_err1",
+    "koi_prad_err2",
+    "koi_teq",
+    "koi_insol",
+    "koi_insol_err1",
+    "koi_insol_err2",
+    "koi_model_snr",
+    "koi_tce_plnt_num",
+    "koi_steff",
+    "koi_steff_err1",
+    "koi_steff_err2",
+    "koi_slogg",
+    "koi_slogg_err1",
+    "koi_slogg_err2",
+    "koi_srad",
+    "koi_srad_err1",
+    "koi_srad_err2",
+    "ra",
+    "dec",
+    "koi_kepmag"
+  ],
+  "validation_metrics": {
+    "accuracy": 0.7386304234187141,
+    "precision_macro": 0.6795832072596628,
+    "precision_micro": 0.7386304234187141,
+    "precision_weighted": 0.7161278567567759,
+    "recall_macro": 0.6668517013151886,
+    "recall_micro": 0.7386304234187141,
+    "recall_weighted": 0.7386304234187141,
+    "f1_macro": 0.6594262006194005,
+    "f1_micro": 0.7386304234187141,
+    "f1_weighted": 0.7179807384309298,
+    "confusion_matrix": [
+      [
+        112,
+        167,
+        117
+      ],
+      [
+        85,
+        827,
+        56
+      ],
+      [
+        19,
+        56,
+        474
+      ]
+    ],
+    "classification_report": {
+      "Class_0": {
+        "precision": 0.5185185185185185,
+        "recall": 0.2828282828282828,
+        "f1-score": 0.3660130718954248,
+        "support": 396.0
+      },
+      "Class_1": {
+        "precision": 0.7876190476190477,
+        "recall": 0.8543388429752066,
+        "f1-score": 0.819623389494549,
+        "support": 968.0
+      },
+      "Class_2": {
+        "precision": 0.732612055641422,
+        "recall": 0.8633879781420765,
+        "f1-score": 0.7926421404682275,
+        "support": 549.0
+      },
+      "accuracy": 0.7386304234187141,
+      "macro avg": {
+        "precision": 0.6795832072596628,
+        "recall": 0.6668517013151886,
+        "f1-score": 0.6594262006194005,
+        "support": 1913.0
+      },
+      "weighted avg": {
+        "precision": 0.7161278567567759,
+        "recall": 0.7386304234187141,
+        "f1-score": 0.7179807384309298,
+        "support": 1913.0
+      }
+    },
+    "class_distribution": {
+      "candidate": 396,
+      "false_positive": 968,
+      "planet": 549
+    }
+  },
+  "test_metrics": {
+    "accuracy": 0.7375849451123889,
+    "precision_macro": 0.6806937791034396,
+    "precision_micro": 0.7375849451123889,
+    "precision_weighted": 0.7170268349067365,
+    "recall_macro": 0.6700857306296948,
+    "recall_micro": 0.7375849451123889,
+    "recall_weighted": 0.7375849451123889,
+    "f1_macro": 0.6649938110829062,
+    "f1_micro": 0.7375849451123889,
+    "f1_weighted": 0.7201893543540484,
+    "confusion_matrix": [
+      [
+        122,
+        173,
+        101
+      ],
+      [
+        86,
+        819,
+        63
+      ],
+      [
+        29,
+        50,
+        470
+      ]
+    ],
+    "classification_report": {
+      "Class_0": {
+        "precision": 0.5147679324894515,
+        "recall": 0.30808080808080807,
+        "f1-score": 0.3854660347551343,
+        "support": 396.0
+      },
+      "Class_1": {
+        "precision": 0.7859884836852208,
+        "recall": 0.8460743801652892,
+        "f1-score": 0.8149253731343283,
+        "support": 968.0
+      },
+      "Class_2": {
+        "precision": 0.7413249211356467,
+        "recall": 0.8561020036429873,
+        "f1-score": 0.7945900253592562,
+        "support": 549.0
+      },
+      "accuracy": 0.7375849451123889,
+      "macro avg": {
+        "precision": 0.6806937791034396,
+        "recall": 0.6700857306296948,
+        "f1-score": 0.6649938110829062,
+        "support": 1913.0
+      },
+      "weighted avg": {
+        "precision": 0.7170268349067365,
+        "recall": 0.7375849451123889,
+        "f1-score": 0.7201893543540484,
+        "support": 1913.0
+      }
+    },
+    "class_distribution": {
+      "candidate": 396,
+      "false_positive": 968,
+      "planet": 549
+    }
+  },
+  "model_path": "models/pretrained/linear_regression_kepler_model.joblib",
+  "trained_at": "2025-10-02 23:04:48"
+}

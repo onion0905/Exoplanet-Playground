@@ -1,0 +1,179 @@
+{
+  "model_name": "svm",
+  "dataset_name": "kepler",
+  "training_time": 9.026503562927246,
+  "feature_names": [
+    "koi_period",
+    "koi_period_err1",
+    "koi_period_err2",
+    "koi_time0bk",
+    "koi_time0bk_err1",
+    "koi_time0bk_err2",
+    "koi_impact",
+    "koi_impact_err1",
+    "koi_impact_err2",
+    "koi_duration",
+    "koi_duration_err1",
+    "koi_duration_err2",
+    "koi_depth",
+    "koi_depth_err1",
+    "koi_depth_err2",
+    "koi_prad",
+    "koi_prad_err1",
+    "koi_prad_err2",
+    "koi_teq",
+    "koi_insol",
+    "koi_insol_err1",
+    "koi_insol_err2",
+    "koi_model_snr",
+    "koi_tce_plnt_num",
+    "koi_steff",
+    "koi_steff_err1",
+    "koi_steff_err2",
+    "koi_slogg",
+    "koi_slogg_err1",
+    "koi_slogg_err2",
+    "koi_srad",
+    "koi_srad_err1",
+    "koi_srad_err2",
+    "ra",
+    "dec",
+    "koi_kepmag"
+  ],
+  "validation_metrics": {
+    "accuracy": 0.7553580763199164,
+    "precision_macro": 0.7205556746053672,
+    "precision_micro": 0.7553580763199164,
+    "precision_weighted": 0.7407556709758271,
+    "recall_macro": 0.6789310140651422,
+    "recall_micro": 0.7553580763199164,
+    "recall_weighted": 0.7553580763199164,
+    "f1_macro": 0.6785376889154499,
+    "f1_micro": 0.7553580763199164,
+    "f1_weighted": 0.7335799244802567,
+    "confusion_matrix": [
+      [
+        121,
+        173,
+        102
+      ],
+      [
+        51,
+        863,
+        54
+      ],
+      [
+        19,
+        69,
+        461
+      ]
+    ],
+    "classification_report": {
+      "Class_0": {
+        "precision": 0.6335078534031413,
+        "recall": 0.3055555555555556,
+        "f1-score": 0.4122657580919932,
+        "support": 396.0
+      },
+      "Class_1": {
+        "precision": 0.7809954751131222,
+        "recall": 0.8915289256198347,
+        "f1-score": 0.8326097443318862,
+        "support": 968.0
+      },
+      "Class_2": {
+        "precision": 0.747163695299838,
+        "recall": 0.8397085610200364,
+        "f1-score": 0.79073756432247,
+        "support": 549.0
+      },
+      "accuracy": 0.7553580763199164,
+      "macro avg": {
+        "precision": 0.7205556746053672,
+        "recall": 0.6789310140651422,
+        "f1-score": 0.6785376889154499,
+        "support": 1913.0
+      },
+      "weighted avg": {
+        "precision": 0.7407556709758271,
+        "recall": 0.7553580763199164,
+        "f1-score": 0.7335799244802567,
+        "support": 1913.0
+      }
+    },
+    "class_distribution": {
+      "candidate": 396,
+      "false_positive": 968,
+      "planet": 549
+    }
+  },
+  "test_metrics": {
+    "accuracy": 0.7480397281756404,
+    "precision_macro": 0.7049446887911502,
+    "precision_micro": 0.7480397281756404,
+    "precision_weighted": 0.730270296481512,
+    "recall_macro": 0.6725332058789585,
+    "recall_micro": 0.7480397281756404,
+    "recall_weighted": 0.7480397281756404,
+    "f1_macro": 0.6718360668051035,
+    "f1_micro": 0.7480397281756404,
+    "f1_weighted": 0.7274998754464633,
+    "confusion_matrix": [
+      [
+        121,
+        179,
+        96
+      ],
+      [
+        54,
+        855,
+        59
+      ],
+      [
+        30,
+        64,
+        455
+      ]
+    ],
+    "classification_report": {
+      "Class_0": {
+        "precision": 0.5902439024390244,
+        "recall": 0.3055555555555556,
+        "f1-score": 0.40266222961730447,
+        "support": 396.0
+      },
+      "Class_1": {
+        "precision": 0.7786885245901639,
+        "recall": 0.8832644628099173,
+        "f1-score": 0.8276863504356244,
+        "support": 968.0
+      },
+      "Class_2": {
+        "precision": 0.7459016393442623,
+        "recall": 0.8287795992714025,
+        "f1-score": 0.7851596203623814,
+        "support": 549.0
+      },
+      "accuracy": 0.7480397281756404,
+      "macro avg": {
+        "precision": 0.7049446887911502,
+        "recall": 0.6725332058789585,
+        "f1-score": 0.6718360668051035,
+        "support": 1913.0
+      },
+      "weighted avg": {
+        "precision": 0.730270296481512,
+        "recall": 0.7480397281756404,
+        "f1-score": 0.7274998754464633,
+        "support": 1913.0
+      }
+    },
+    "class_distribution": {
+      "candidate": 396,
+      "false_positive": 968,
+      "planet": 549
+    }
+  },
+  "model_path": "models/pretrained/svm_kepler_model.joblib",
+  "trained_at": "2025-10-02 23:04:57"
+}

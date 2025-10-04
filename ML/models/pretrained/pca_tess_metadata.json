@@ -1,0 +1,288 @@
+{
+  "model_name": "pca",
+  "dataset_name": "tess",
+  "training_time": 0.5175144672393799,
+  "feature_names": [
+    "ra",
+    "dec",
+    "st_pmra",
+    "st_pmraerr1",
+    "st_pmraerr2",
+    "st_pmdec",
+    "st_pmdecerr1",
+    "st_pmdecerr2",
+    "pl_orbper",
+    "pl_orbpererr1",
+    "pl_orbpererr2",
+    "pl_trandurh",
+    "pl_trandurherr1",
+    "pl_trandurherr2",
+    "pl_trandep",
+    "pl_trandeperr1",
+    "pl_trandeperr2",
+    "pl_rade",
+    "pl_radeerr1",
+    "pl_radeerr2",
+    "pl_insol",
+    "pl_eqt",
+    "st_tmag",
+    "st_tmagerr1",
+    "st_tmagerr2",
+    "st_dist",
+    "st_disterr1",
+    "st_disterr2",
+    "st_teff",
+    "st_tefferr1",
+    "st_tefferr2",
+    "st_logg",
+    "st_loggerr1",
+    "st_loggerr2",
+    "st_rad",
+    "st_raderr1",
+    "st_raderr2"
+  ],
+  "validation_metrics": {
+    "accuracy": 0.6279220779220779,
+    "precision_macro": 0.32057295092750954,
+    "precision_micro": 0.6279220779220779,
+    "precision_weighted": 0.5300038144331658,
+    "recall_macro": 0.2290132624003355,
+    "recall_micro": 0.6279220779220779,
+    "recall_weighted": 0.6279220779220779,
+    "f1_macro": 0.23128471629024036,
+    "f1_micro": 0.6279220779220779,
+    "f1_weighted": 0.5385191319800869,
+    "confusion_matrix": [
+      [
+        3,
+        0,
+        0,
+        12,
+        0,
+        77
+      ],
+      [
+        0,
+        29,
+        0,
+        2,
+        0,
+        106
+      ],
+      [
+        0,
+        0,
+        0,
+        4,
+        0,
+        16
+      ],
+      [
+        4,
+        5,
+        1,
+        42,
+        2,
+        185
+      ],
+      [
+        0,
+        9,
+        0,
+        2,
+        0,
+        105
+      ],
+      [
+        4,
+        12,
+        0,
+        26,
+        1,
+        893
+      ]
+    ],
+    "classification_report": {
+      "Class_0": {
+        "precision": 0.2727272727272727,
+        "recall": 0.03260869565217391,
+        "f1-score": 0.05825242718446602,
+        "support": 92.0
+      },
+      "Class_1": {
+        "precision": 0.5272727272727272,
+        "recall": 0.2116788321167883,
+        "f1-score": 0.3020833333333333,
+        "support": 137.0
+      },
+      "Class_2": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 20.0
+      },
+      "Class_3": {
+        "precision": 0.4772727272727273,
+        "recall": 0.17573221757322174,
+        "f1-score": 0.25688073394495414,
+        "support": 239.0
+      },
+      "Class_4": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 116.0
+      },
+      "Class_5": {
+        "precision": 0.64616497829233,
+        "recall": 0.9540598290598291,
+        "f1-score": 0.7704918032786885,
+        "support": 936.0
+      },
+      "accuracy": 0.6279220779220779,
+      "macro avg": {
+        "precision": 0.32057295092750954,
+        "recall": 0.2290132624003355,
+        "f1-score": 0.23128471629024036,
+        "support": 1540.0
+      },
+      "weighted avg": {
+        "precision": 0.5300038144331658,
+        "recall": 0.6279220779220779,
+        "f1-score": 0.5385191319800869,
+        "support": 1540.0
+      }
+    },
+    "class_distribution": {
+      "APC": 92,
+      "CP": 137,
+      "FA": 20,
+      "FP": 239,
+      "KP": 116,
+      "PC": 936
+    }
+  },
+  "test_metrics": {
+    "accuracy": 0.6441558441558441,
+    "precision_macro": 0.3761543467788342,
+    "precision_micro": 0.6441558441558441,
+    "precision_weighted": 0.5755366834267936,
+    "recall_macro": 0.2454645023776129,
+    "recall_micro": 0.6441558441558441,
+    "recall_weighted": 0.6441558441558441,
+    "f1_macro": 0.25199902661941703,
+    "f1_micro": 0.6441558441558441,
+    "f1_weighted": 0.5610108693992544,
+    "confusion_matrix": [
+      [
+        1,
+        4,
+        0,
+        14,
+        0,
+        73
+      ],
+      [
+        0,
+        34,
+        1,
+        1,
+        2,
+        99
+      ],
+      [
+        0,
+        0,
+        0,
+        3,
+        0,
+        16
+      ],
+      [
+        3,
+        2,
+        0,
+        59,
+        0,
+        175
+      ],
+      [
+        2,
+        3,
+        0,
+        2,
+        1,
+        109
+      ],
+      [
+        6,
+        18,
+        0,
+        15,
+        0,
+        897
+      ]
+    ],
+    "classification_report": {
+      "Class_0": {
+        "precision": 0.08333333333333333,
+        "recall": 0.010869565217391304,
+        "f1-score": 0.019230769230769232,
+        "support": 92.0
+      },
+      "Class_1": {
+        "precision": 0.5573770491803278,
+        "recall": 0.24817518248175183,
+        "f1-score": 0.3434343434343434,
+        "support": 137.0
+      },
+      "Class_2": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 19.0
+      },
+      "Class_3": {
+        "precision": 0.6276595744680851,
+        "recall": 0.24686192468619247,
+        "f1-score": 0.35435435435435436,
+        "support": 239.0
+      },
+      "Class_4": {
+        "precision": 0.3333333333333333,
+        "recall": 0.008547008547008548,
+        "f1-score": 0.016666666666666666,
+        "support": 117.0
+      },
+      "Class_5": {
+        "precision": 0.6552227903579255,
+        "recall": 0.9583333333333334,
+        "f1-score": 0.7783080260303687,
+        "support": 936.0
+      },
+      "accuracy": 0.6441558441558441,
+      "macro avg": {
+        "precision": 0.3761543467788342,
+        "recall": 0.2454645023776129,
+        "f1-score": 0.25199902661941703,
+        "support": 1540.0
+      },
+      "weighted avg": {
+        "precision": 0.5755366834267936,
+        "recall": 0.6441558441558441,
+        "f1-score": 0.5610108693992544,
+        "support": 1540.0
+      }
+    },
+    "class_distribution": {
+      "APC": 92,
+      "CP": 137,
+      "FA": 19,
+      "FP": 239,
+      "KP": 117,
+      "PC": 936
+    }
+  },
+  "model_path": "models/pretrained/pca_tess_model.joblib",
+  "trained_at": "2025-10-02 23:05:57"
+}
