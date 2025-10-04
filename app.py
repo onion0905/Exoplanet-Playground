@@ -4,6 +4,15 @@ import os
 import time
 import threading
 import uuid
+import sys
+from pathlib import Path
+
+# Add ML module to path
+project_root = Path(__file__).parent
+sys.path.insert(0, str(project_root))
+
+# Import ML API
+from ML.src.api.user_api import ExoplanetMLAPI
 
 app = Flask(__name__)
 app.secret_key = 'nasa_hackathon_secret_key_2024'  # For flash messages
@@ -15,6 +24,9 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Create uploads directory if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Initialize ML API
+ml_api = ExoplanetMLAPI()
 
 # Global storage for training jobs
 training_jobs = {}
@@ -65,13 +77,24 @@ def select():
                 flash('Please select a machine learning model', 'error')
                 return redirect(url_for('select'))
             
+            # Map model names from frontend to ML API
+            model_name_mapping = {
+                'neural_network': 'deep_learning'  # Map neural_network to deep_learning
+            }
+            
+            # Get the actual model type for the ML API
+            api_model_type = model_name_mapping.get(model_type, model_type)
+            
             # Collect hyperparameters based on model type
             hyperparameters = {}
             
             if model_type == 'linear_regression':
+                # Note: fit_intercept and normalize are handled internally by LogisticRegression in the ML API
+                # The ML API uses C for regularization, max_iter, and solver
                 hyperparameters = {
-                    'fit_intercept': request.form.get('fit_intercept', 'true') == 'true',
-                    'normalize': request.form.get('normalize', 'false') == 'true'
+                    'C': 1.0,  # Default regularization
+                    'max_iter': 1000,
+                    'solver': 'lbfgs'
                 }
             
             elif model_type == 'svm':
@@ -109,31 +132,49 @@ def select():
             
             elif model_type == 'pca':
                 n_components = request.form.get('n_components')
+                # For PCA, convert n_components to float if it's meant to be a variance ratio
+                if n_components:
+                    try:
+                        n_comp_val = float(n_components)
+                        # If it's > 1, treat as integer number of components
+                        # If it's <= 1, treat as variance ratio
+                        if n_comp_val > 1:
+                            n_comp_val = int(n_comp_val)
+                    except:
+                        n_comp_val = 0.95  # Default variance ratio
+                else:
+                    n_comp_val = 0.95  # Default variance ratio
+                
                 hyperparameters = {
-                    'n_components': int(n_components) if n_components else None,
-                    'svd_solver': request.form.get('svd_solver', 'auto')
+                    'n_components': n_comp_val
                 }
             
             elif model_type == 'neural_network':
                 hidden_layers = request.form.get('hidden_layer_sizes', '100')
                 # Parse comma-separated values
                 try:
-                    hidden_layer_sizes = tuple(map(int, hidden_layers.split(',')))
+                    hidden_layer_list = [int(x.strip()) for x in hidden_layers.split(',') if x.strip()]
                 except:
-                    hidden_layer_sizes = (100,)
+                    hidden_layer_list = [128, 64, 32]  # Default from ML API
                 
                 hyperparameters = {
-                    'hidden_layer_sizes': hidden_layer_sizes,
+                    'hidden_layers': hidden_layer_list,
                     'activation': request.form.get('activation', 'relu'),
-                    'learning_rate_init': float(request.form.get('learning_rate_nn', 0.001)),
-                    'max_iter': int(request.form.get('max_iter', 200))
+                    'learning_rate': float(request.form.get('learning_rate_nn', 0.001)),
+                    'dropout_rate': 0.3  # Default from ML API
                 }
+            
+            # Generate a unique model name for this training session
+            timestamp = int(time.time())
+            model_name = f"{api_model_type}_{dataset_source}_{timestamp}"
             
             # Create training configuration
             training_config = {
                 'dataset_source': dataset_source,
                 'dataset_path': dataset_path,
-                'model_type': model_type,
+                'model_type': api_model_type,  # Use the mapped model type
+                'original_model_type': model_type,  # Keep original for display
+                'model_name': model_name,
                 'hyperparameters': hyperparameters
             }
             
@@ -175,9 +216,20 @@ def predict():
             flash('No training job found. Please start from model selection.', 'error')
             return redirect(url_for('select'))
         
-        if training_jobs[job_id]['status'] != 'completed':
+        job_status = training_jobs[job_id]['status']
+        if job_status == 'failed':
+            error_msg = training_jobs[job_id].get('error', 'Unknown error')
+            flash(f'Model training failed: {error_msg}', 'error')
+            return redirect(url_for('select'))
+        elif job_status != 'completed':
             flash('Model training not completed yet. Please wait for training to finish.', 'warning')
             return redirect(url_for('training'))
+        
+        # Check if the training result exists and was successful
+        training_result = training_jobs[job_id].get('training_result')
+        if not training_result or not training_result.get('success'):
+            flash('Model training was not successful. Please retrain your model.', 'error')
+            return redirect(url_for('select'))
         
         return render_template('predict.html')
     
@@ -329,7 +381,8 @@ def result():
         'random_forest': 'Random Forest',
         'xgboost': 'XGBoost',
         'pca': 'Principal Component Analysis',
-        'neural_network': 'Neural Network'
+        'neural_network': 'Neural Network',
+        'deep_learning': 'Neural Network'
     }
     
     # Dataset name mapping
@@ -361,14 +414,58 @@ def learn():
         "description": "This endpoint will provide learning resources"
     })
 
-def simulate_training(job_id, socketio):
-    """Simulate training progress over 3 seconds"""
+@app.route('/api/trained_models')
+def get_trained_models():
+    """API endpoint to get list of trained models"""
+    try:
+        # Get trained models from ML API
+        trained_models = ml_api.list_trained_models()
+        return jsonify({
+            "status": "success",
+            "models": trained_models
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+@app.route('/api/training_status/<job_id>')
+def get_training_status(job_id):
+    """API endpoint to get training job status"""
+    if job_id not in training_jobs:
+        return jsonify({
+            "status": "error",
+            "message": "Training job not found"
+        }), 404
+    
+    job = training_jobs[job_id]
+    response = {
+        "status": "success",
+        "job_status": job['status'],
+        "progress": job.get('progress', 0),
+        "created_at": job['created_at']
+    }
+    
+    if 'error' in job:
+        response['error'] = job['error']
+    
+    if 'training_result' in job:
+        response['training_result'] = job['training_result']
+    
+    return jsonify(response)
+
+def run_actual_training(job_id, socketio):
+    """Run actual ML training using the ExoplanetMLAPI"""
     if job_id not in training_jobs:
         return
     
     config = training_jobs[job_id]['config']
     model_type = config['model_type']
+    original_model_type = config.get('original_model_type', model_type)
     dataset_source = config['dataset_source']
+    model_name = config['model_name']
+    hyperparameters = config['hyperparameters']
     
     # Model name mapping for display
     model_names = {
@@ -378,7 +475,7 @@ def simulate_training(job_id, socketio):
         'random_forest': 'Random Forest',
         'xgboost': 'XGBoost',
         'pca': 'Principal Component Analysis',
-        'neural_network': 'Neural Network'
+        'deep_learning': 'Neural Network'
     }
     
     # Dataset name mapping
@@ -389,90 +486,133 @@ def simulate_training(job_id, socketio):
         'user_upload': 'User Uploaded Dataset'
     }
     
-    model_name = model_names.get(model_type, model_type.title())
+    display_model_name = model_names.get(original_model_type, model_type.title())
     dataset_name = dataset_names.get(dataset_source, 'Custom Dataset')
     
-    # Send initial configuration
-    socketio.emit('training_config', {
-        'model_name': model_name,
-        'dataset_name': dataset_name
-    })
-    
-    # Training phases
-    phases = [
-        {'name': 'Loading dataset...', 'duration': 0.3},
-        {'name': 'Preprocessing data...', 'duration': 0.5},
-        {'name': 'Splitting train/test sets...', 'duration': 0.2},
-        {'name': 'Initializing model...', 'duration': 0.3},
-        {'name': 'Training model...', 'duration': 1.2},
-        {'name': 'Validating performance...', 'duration': 0.4},
-        {'name': 'Finalizing results...', 'duration': 0.1}
-    ]
-    
-    total_duration = sum(phase['duration'] for phase in phases)
-    elapsed_time = 0
-    
-    training_jobs[job_id]['status'] = 'running'
-    
-    for i, phase in enumerate(phases):
-        if job_id not in training_jobs:
-            break
-            
-        phase_progress = (elapsed_time / total_duration) * 100
-        remaining_time = total_duration - elapsed_time
-        
-        socketio.emit('training_progress', {
-            'percentage': phase_progress,
-            'message': phase['name'],
-            'eta': f'Estimated time remaining: {remaining_time:.1f}s',
-            'phase': i + 1,
-            'total_phases': len(phases)
+    try:
+        # Send initial configuration
+        socketio.emit('training_config', {
+            'model_name': display_model_name,
+            'dataset_name': dataset_name
         })
         
-        # Simulate phase execution with gradual progress updates
-        steps = max(10, int(phase['duration'] * 10))  # At least 10 steps per phase
-        step_duration = phase['duration'] / steps
+        training_jobs[job_id]['status'] = 'running'
         
-        for step in range(steps):
-            if job_id not in training_jobs:
-                break
-                
-            time.sleep(step_duration)
-            elapsed_time += step_duration
-            
-            step_progress = (elapsed_time / total_duration) * 100
-            remaining_time = max(0, total_duration - elapsed_time)
-            
+        # Phase 1: Loading dataset
+        socketio.emit('training_progress', {
+            'percentage': 10,
+            'message': 'Loading dataset...',
+            'eta': 'Loading data from NASA archives',
+            'phase': 1,
+            'total_phases': 6
+        })
+        
+        # For NASA datasets, use the dataset name directly
+        if dataset_source in ['kepler', 'k2', 'tess']:
+            dataset_for_api = dataset_source
+        else:
+            # For user uploads, we would need to handle custom data loading
+            # For now, fallback to a default dataset
+            dataset_for_api = 'kepler'
             socketio.emit('training_progress', {
-                'percentage': min(99, step_progress),  # Cap at 99% until complete
-                'message': phase['name'],
-                'eta': f'Estimated time remaining: {remaining_time:.1f}s',
-                'phase': i + 1,
-                'total_phases': len(phases)
+                'percentage': 15,
+                'message': 'Note: Using Kepler dataset for user upload (custom data support coming soon)',
+                'eta': 'Continuing with training...',
+                'phase': 1,
+                'total_phases': 6
             })
-    
-    # Mark as completed
-    if job_id in training_jobs:
-        training_jobs[job_id]['status'] = 'completed'
-        training_jobs[job_id]['progress'] = 100
         
-        # Generate mock accuracy based on model type
-        mock_accuracies = {
-            'linear_regression': '85.3%',
-            'svm': '89.7%', 
-            'decision_tree': '82.1%',
-            'random_forest': '91.2%',
-            'xgboost': '93.8%',
-            'pca': '78.5% variance explained',
-            'neural_network': '90.4%'
-        }
+        # Phase 2: Data preprocessing
+        socketio.emit('training_progress', {
+            'percentage': 25,
+            'message': 'Preprocessing and validating data...',
+            'eta': 'Cleaning and preparing features',
+            'phase': 2,
+            'total_phases': 6
+        })
         
-        accuracy = mock_accuracies.get(model_type, '87.6%')
+        # Phase 3: Model initialization
+        socketio.emit('training_progress', {
+            'percentage': 40,
+            'message': 'Initializing model architecture...',
+            'eta': 'Setting up hyperparameters',
+            'phase': 3,
+            'total_phases': 6
+        })
         
-        socketio.emit('training_complete', {
-            'message': 'Training completed successfully!',
-            'accuracy': accuracy,
-            'model_type': model_name,
+        # Phase 4: Training
+        socketio.emit('training_progress', {
+            'percentage': 50,
+            'message': 'Training model... This may take a moment',
+            'eta': 'Learning from exoplanet patterns',
+            'phase': 4,
+            'total_phases': 6
+        })
+        
+        # Actually train the model using the ML API
+        training_result = ml_api.train_model(
+            model_type=model_type,
+            dataset_name=dataset_for_api,
+            model_name=model_name,
+            hyperparameters=hyperparameters
+        )
+        
+        # Phase 5: Validation
+        socketio.emit('training_progress', {
+            'percentage': 85,
+            'message': 'Validating model performance...',
+            'eta': 'Calculating accuracy metrics',
+            'phase': 5,
+            'total_phases': 6
+        })
+        
+        # Phase 6: Finalizing
+        socketio.emit('training_progress', {
+            'percentage': 95,
+            'message': 'Saving trained model...',
+            'eta': 'Almost complete',
+            'phase': 6,
+            'total_phases': 6
+        })
+        
+        if training_result.get('success', False):
+            # Mark as completed and store results
+            training_jobs[job_id]['status'] = 'completed'
+            training_jobs[job_id]['progress'] = 100
+            training_jobs[job_id]['training_result'] = training_result
+            
+            # Get accuracy from the training result
+            accuracy = training_result.get('test_accuracy', 0.0)
+            accuracy_str = f'{accuracy:.1%}' if isinstance(accuracy, float) else str(accuracy)
+            
+            socketio.emit('training_complete', {
+                'message': 'Training completed successfully!',
+                'accuracy': accuracy_str,
+                'model_type': display_model_name,
+                'model_name': model_name,
+                'job_id': job_id,
+                'training_time': training_result.get('training_time', 0),
+                'feature_count': training_result.get('feature_count', 0)
+            })
+        else:
+            # Training failed
+            error_msg = training_result.get('error', 'Unknown training error')
+            training_jobs[job_id]['status'] = 'failed'
+            training_jobs[job_id]['error'] = error_msg
+            
+            socketio.emit('training_error', {
+                'message': f'Training failed: {error_msg}',
+                'job_id': job_id
+            })
+            
+    except Exception as e:
+        # Handle unexpected errors
+        error_msg = str(e)
+        training_jobs[job_id]['status'] = 'failed'
+        training_jobs[job_id]['error'] = error_msg
+        
+        socketio.emit('training_error', {
+            'message': f'Training error: {error_msg}',
             'job_id': job_id
         })
 
@@ -487,7 +627,7 @@ def handle_disconnect():
 
 @socketio.on('start_training')
 def handle_start_training():
-    """Start the training simulation when client requests it"""
+    """Start the actual ML training when client requests it"""
     job_id = session.get('training_job_id')
     
     if not job_id or job_id not in training_jobs:
@@ -498,8 +638,8 @@ def handle_start_training():
         emit('training_error', {'message': 'Training job already started or completed'})
         return
     
-    # Start training simulation in background thread
-    thread = threading.Thread(target=simulate_training, args=(job_id, socketio))
+    # Start actual ML training in background thread
+    thread = threading.Thread(target=run_actual_training, args=(job_id, socketio))
     thread.daemon = True
     thread.start()
 
