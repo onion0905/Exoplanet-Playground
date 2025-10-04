@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NASA Hackathon - Model Selection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 2rem 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .page-subtitle {
+            font-size: 1.1rem;
+            color: #b8b8b8;
+            margin-bottom: 2rem;
+        }
+
+        .form-container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .section {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #4ecdc4;
+            box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
+        }
+
+        .file-upload-area {
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.02);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .file-upload-area:hover {
+            border-color: #4ecdc4;
+            background: rgba(78, 205, 196, 0.05);
+        }
+
+        .file-upload-area.dragover {
+            border-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.05);
+        }
+
+        .dataset-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .dataset-card {
+            background: rgba(255, 255, 255, 0.08);
+            border: 2px solid transparent;
+            border-radius: 10px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dataset-card:hover {
+            border-color: rgba(78, 205, 196, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .dataset-card.selected {
+            border-color: #4ecdc4;
+            background: rgba(78, 205, 196, 0.1);
+        }
+
+        .dataset-card input[type="radio"] {
+            display: none;
+        }
+
+        .hyperparams-container {
+            display: none;
+            margin-top: 1rem;
+        }
+
+        .hyperparams-container.active {
+            display: block;
+        }
+
+        .hyperparam-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .train-button {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 1rem 3rem;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+            width: 100%;
+            margin-top: 2rem;
+        }
+
+        .train-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.5);
+        }
+
+        .train-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .info-text {
+            color: #b8b8b8;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .model-description {
+            background: rgba(78, 205, 196, 0.1);
+            border-left: 3px solid #4ecdc4;
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 0 8px 8px 0;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 1rem;
+            }
+            
+            .form-container {
+                padding: 2rem;
+            }
+            
+            .hyperparam-group {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-btn">← Back to Home</a>
+    
+    <div class="container">
+        <div class="header">
+            <h1 class="page-title">Model Selection & Configuration</h1>
+            <p class="page-subtitle">Choose your dataset, select a machine learning model, and configure hyperparameters</p>
+        </div>
+
+        <div class="form-container">
+            <form id="trainingForm" action="/select" method="POST" enctype="multipart/form-data">
+                
+                <!-- Dataset Selection Section -->
+                <div class="section">
+                    <h2 class="section-title">
+                        📊 Dataset Selection
+                    </h2>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Upload Your Own Dataset (.csv)</label>
+                        <div class="file-upload-area" id="fileUploadArea">
+                            <div>
+                                <p>📁 Drag and drop your CSV file here</p>
+                                <p>or</p>
+                                <input type="file" id="csvFile" name="csv_file" accept=".csv" style="display: none;">
+                                <button type="button" onclick="document.getElementById('csvFile').click()" style="background: rgba(78, 205, 196, 0.2); border: 1px solid #4ecdc4; color: white; padding: 0.5rem 1rem; border-radius: 5px; cursor: pointer;">Choose File</button>
+                            </div>
+                            <p class="info-text">Supported format: CSV files with exoplanet data</p>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center; margin: 1.5rem 0; color: #888;">OR</div>
+
+                    <div class="form-group">
+                        <label class="form-label">Choose NASA Dataset</label>
+                        <div class="dataset-options">
+                            <div class="dataset-card" onclick="selectDataset('kepler')">
+                                <input type="radio" name="nasa_dataset" value="kepler" id="kepler">
+                                <h3>🌟 Kepler Dataset</h3>
+                                <p class="info-text">Kepler Space Telescope exoplanet discoveries</p>
+                            </div>
+                            <div class="dataset-card" onclick="selectDataset('k2')">
+                                <input type="radio" name="nasa_dataset" value="k2" id="k2">
+                                <h3>🚀 K2 Dataset</h3>
+                                <p class="info-text">K2 mission extended observations</p>
+                            </div>
+                            <div class="dataset-card" onclick="selectDataset('tess')">
+                                <input type="radio" name="nasa_dataset" value="tess" id="tess">
+                                <h3>🛰️ TESS Dataset</h3>
+                                <p class="info-text">Transiting Exoplanet Survey Satellite data</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Model Selection Section -->
+                <div class="section">
+                    <h2 class="section-title">
+                        🤖 Model Selection
+                    </h2>
+                    
+                    <div class="form-group">
+                        <label for="model" class="form-label">Choose Machine Learning Model</label>
+                        <select id="model" name="model" class="form-select" onchange="showHyperparameters()">
+                            <option value="">Select a model...</option>
+                            <option value="linear_regression">Linear Regression</option>
+                            <option value="svm">Support Vector Machine (SVM)</option>
+                            <option value="decision_tree">Decision Tree</option>
+                            <option value="random_forest">Random Forest</option>
+                            <option value="xgboost">XGBoost</option>
+                            <option value="pca">Principal Component Analysis (PCA)</option>
+                            <option value="neural_network">Neural Network</option>
+                        </select>
+                    </div>
+
+                    <div id="modelDescription" class="model-description" style="display: none;"></div>
+                </div>
+
+                <!-- Hyperparameters Section -->
+                <div class="section">
+                    <h2 class="section-title">
+                        ⚙️ Hyperparameter Tuning
+                    </h2>
+
+                    <!-- Linear Regression Hyperparameters -->
+                    <div id="linear_regression_params" class="hyperparams-container">
+                        <div class="hyperparam-group">
+                            <div class="form-group">
+                                <label class="form-label">Fit Intercept</label>
+                                <select name="fit_intercept" class="form-select">
+                                    <option value="true">True</option>
+                                    <option value="false">False</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Normalize</label>
+                                <select name="normalize" class="form-select">
+                                    <option value="false">False</option>
+                                    <option value="true">True</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SVM Hyperparameters -->
+                    <div id="svm_params" class="hyperparams-container">
+                        <div class="hyperparam-group">
+                            <div class="form-group">
+                                <label class="form-label">C (Regularization)</label>
+                                <input type="number" name="C" class="form-input" value="1.0" step="0.1" min="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Kernel</label>
+                                <select name="kernel" class="form-select">
+                                    <option value="rbf">RBF</option>
+                                    <option value="linear">Linear</option>
+                                    <option value="poly">Polynomial</option>
+                                    <option value="sigmoid">Sigmoid</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Gamma</label>
+                                <select name="gamma" class="form-select">
+                                    <option value="scale">Scale</option>
+                                    <option value="auto">Auto</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Decision Tree Hyperparameters -->
+                    <div id="decision_tree_params" class="hyperparams-container">
+                        <div class="hyperparam-group">
+                            <div class="form-group">
+                                <label class="form-label">Max Depth</label>
+                                <input type="number" name="max_depth" class="form-input" placeholder="None (unlimited)" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Min Samples Split</label>
+                                <input type="number" name="min_samples_split" class="form-input" value="2" min="2">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Min Samples Leaf</label>
+                                <input type="number" name="min_samples_leaf" class="form-input" value="1" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Criterion</label>
+                                <select name="criterion" class="form-select">
+                                    <option value="gini">Gini</option>
+                                    <option value="entropy">Entropy</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Random Forest Hyperparameters -->
+                    <div id="random_forest_params" class="hyperparams-container">
+                        <div class="hyperparam-group">
+                            <div class="form-group">
+                                <label class="form-label">Number of Estimators</label>
+                                <input type="number" name="n_estimators" class="form-input" value="100" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Max Depth</label>
+                                <input type="number" name="max_depth_rf" class="form-input" placeholder="None (unlimited)" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Min Samples Split</label>
+                                <input type="number" name="min_samples_split_rf" class="form-input" value="2" min="2">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Min Samples Leaf</label>
+                                <input type="number" name="min_samples_leaf_rf" class="form-input" value="1" min="1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- XGBoost Hyperparameters -->
+                    <div id="xgboost_params" class="hyperparams-container">
+                        <div class="hyperparam-group">
+                            <div class="form-group">
+                                <label class="form-label">Learning Rate</label>
+                                <input type="number" name="learning_rate" class="form-input" value="0.1" step="0.01" min="0.01" max="1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Max Depth</label>
+                                <input type="number" name="max_depth_xgb" class="form-input" value="6" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">N Estimators</label>
+                                <input type="number" name="n_estimators_xgb" class="form-input" value="100" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Subsample</label>
+                                <input type="number" name="subsample" class="form-input" value="1.0" step="0.1" min="0.1" max="1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PCA Hyperparameters -->
+                    <div id="pca_params" class="hyperparams-container">
+                        <div class="hyperparam-group">
+                            <div class="form-group">
+                                <label class="form-label">Number of Components</label>
+                                <input type="number" name="n_components" class="form-input" placeholder="Auto (min of features/samples)" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">SVD Solver</label>
+                                <select name="svd_solver" class="form-select">
+                                    <option value="auto">Auto</option>
+                                    <option value="full">Full</option>
+                                    <option value="arpack">ARPACK</option>
+                                    <option value="randomized">Randomized</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Neural Network Hyperparameters -->
+                    <div id="neural_network_params" class="hyperparams-container">
+                        <div class="hyperparam-group">
+                            <div class="form-group">
+                                <label class="form-label">Hidden Layer Sizes (comma-separated)</label>
+                                <input type="text" name="hidden_layer_sizes" class="form-input" value="100" placeholder="e.g., 100,50,25">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Activation Function</label>
+                                <select name="activation" class="form-select">
+                                    <option value="relu">ReLU</option>
+                                    <option value="tanh">Tanh</option>
+                                    <option value="logistic">Logistic</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Learning Rate</label>
+                                <input type="number" name="learning_rate_nn" class="form-input" value="0.001" step="0.0001" min="0.0001">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Max Iterations</label>
+                                <input type="number" name="max_iter" class="form-input" value="200" min="1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="info-text">Configure the hyperparameters above based on your model selection. Default values are provided for quick start.</p>
+                </div>
+
+                <button type="submit" class="train-button" id="trainButton" disabled>
+                    🚀 Start Training
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const modelDescriptions = {
+            'linear_regression': 'Linear Regression is a simple yet powerful algorithm for regression tasks. It assumes a linear relationship between input features and target variables.',
+            'svm': 'Support Vector Machine is versatile for both classification and regression. It finds optimal decision boundaries by maximizing margins between classes.',
+            'decision_tree': 'Decision Tree creates a tree-like model of decisions. It\'s interpretable and handles both numerical and categorical features naturally.',
+            'random_forest': 'Random Forest combines multiple decision trees to improve accuracy and reduce overfitting. It\'s robust and handles missing values well.',
+            'xgboost': 'XGBoost is a gradient boosting framework that often achieves state-of-the-art results. It\'s optimized for speed and performance.',
+            'pca': 'Principal Component Analysis reduces dimensionality while preserving variance. Useful for visualization and preprocessing high-dimensional data.',
+            'neural_network': 'Neural Network can model complex non-linear relationships. Multi-layer perceptron is suitable for various classification and regression tasks.'
+        };
+
+        function selectDataset(dataset) {
+            // Remove selection from all cards
+            document.querySelectorAll('.dataset-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            // Add selection to clicked card
+            document.querySelector(`[onclick="selectDataset('${dataset}')"]`).classList.add('selected');
+            
+            // Check the radio button
+            document.getElementById(dataset).checked = true;
+            
+            // Clear file upload if NASA dataset is selected
+            document.getElementById('csvFile').value = '';
+            
+            checkFormValidity();
+        }
+
+        function showHyperparameters() {
+            const selectedModel = document.getElementById('model').value;
+            
+            // Hide all hyperparameter containers
+            document.querySelectorAll('.hyperparams-container').forEach(container => {
+                container.classList.remove('active');
+            });
+            
+            // Show selected model's hyperparameters
+            if (selectedModel) {
+                const container = document.getElementById(selectedModel + '_params');
+                if (container) {
+                    container.classList.add('active');
+                }
+                
+                // Show model description
+                const descriptionDiv = document.getElementById('modelDescription');
+                descriptionDiv.textContent = modelDescriptions[selectedModel];
+                descriptionDiv.style.display = 'block';
+            } else {
+                document.getElementById('modelDescription').style.display = 'none';
+            }
+            
+            checkFormValidity();
+        }
+
+        function checkFormValidity() {
+            const hasDataset = document.getElementById('csvFile').files.length > 0 || 
+                             document.querySelector('input[name="nasa_dataset"]:checked');
+            const hasModel = document.getElementById('model').value !== '';
+            
+            document.getElementById('trainButton').disabled = !(hasDataset && hasModel);
+        }
+
+        // File upload handling
+        const fileUploadArea = document.getElementById('fileUploadArea');
+        const csvFileInput = document.getElementById('csvFile');
+
+        fileUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUploadArea.classList.add('dragover');
+        });
+
+        fileUploadArea.addEventListener('dragleave', () => {
+            fileUploadArea.classList.remove('dragover');
+        });
+
+        fileUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type === 'text/csv') {
+                csvFileInput.files = files;
+                
+                // Clear NASA dataset selection
+                document.querySelectorAll('input[name="nasa_dataset"]').forEach(radio => {
+                    radio.checked = false;
+                });
+                document.querySelectorAll('.dataset-card').forEach(card => {
+                    card.classList.remove('selected');
+                });
+                
+                checkFormValidity();
+            }
+        });
+
+        csvFileInput.addEventListener('change', () => {
+            if (csvFileInput.files.length > 0) {
+                // Clear NASA dataset selection
+                document.querySelectorAll('input[name="nasa_dataset"]').forEach(radio => {
+                    radio.checked = false;
+                });
+                document.querySelectorAll('.dataset-card').forEach(card => {
+                    card.classList.remove('selected');
+                });
+            }
+            checkFormValidity();
+        });
+
+        // Initial form validation
+        document.addEventListener('DOMContentLoaded', checkFormValidity);
+    </script>
+</body>
+</html>
