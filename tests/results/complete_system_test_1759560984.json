@@ -1,0 +1,235 @@
+{
+  "models_trained": [
+    {
+      "model_name": "rf_kepler_1759560980",
+      "model_type": "random_forest",
+      "dataset": "kepler",
+      "accuracy": 0.7935180345007841,
+      "training_time": 1.30245041847229,
+      "feature_count": 36
+    },
+    {
+      "model_name": "dt_tess_1759560980",
+      "model_type": "decision_tree",
+      "dataset": "tess",
+      "accuracy": 0.6454545454545455,
+      "training_time": 0.9845700263977051,
+      "feature_count": 37
+    },
+    {
+      "model_name": "lr_k2_1759560980",
+      "model_type": "linear_regression",
+      "dataset": "k2",
+      "accuracy": 0.7078651685393258,
+      "training_time": 0.7716717720031738,
+      "feature_count": 33
+    }
+  ],
+  "predictions_made": [
+    {
+      "model_name": "rf_kepler_1759560980",
+      "model_type": "random_forest",
+      "dataset": "kepler",
+      "prediction": "false_positive",
+      "confidence": 0.6368926725448464,
+      "actual_class": "CONFIRMED"
+    },
+    {
+      "model_name": "rf_kepler_1759560980",
+      "model_type": "random_forest",
+      "dataset": "kepler",
+      "prediction": "false_positive",
+      "confidence": 0.6568926725448463,
+      "actual_class": "CONFIRMED"
+    },
+    {
+      "model_name": "rf_kepler_1759560980",
+      "model_type": "random_forest",
+      "dataset": "kepler",
+      "prediction": "false_positive",
+      "confidence": 0.5977622377622377,
+      "actual_class": "CANDIDATE"
+    },
+    {
+      "model_name": "dt_tess_1759560980",
+      "model_type": "decision_tree",
+      "dataset": "tess",
+      "prediction": "PC",
+      "confidence": 0.8666666666666667,
+      "actual_class": "FP"
+    },
+    {
+      "model_name": "dt_tess_1759560980",
+      "model_type": "decision_tree",
+      "dataset": "tess",
+      "prediction": "PC",
+      "confidence": 0.8666666666666667,
+      "actual_class": "PC"
+    },
+    {
+      "model_name": "dt_tess_1759560980",
+      "model_type": "decision_tree",
+      "dataset": "tess",
+      "prediction": "PC",
+      "confidence": 0.8571428571428571,
+      "actual_class": "FP"
+    },
+    {
+      "model_name": "lr_k2_1759560980",
+      "model_type": "linear_regression",
+      "dataset": "k2",
+      "prediction": "REFUTED",
+      "confidence": 1.0,
+      "actual_class": "CONFIRMED"
+    },
+    {
+      "model_name": "lr_k2_1759560980",
+      "model_type": "linear_regression",
+      "dataset": "k2",
+      "prediction": "REFUTED",
+      "confidence": 1.0,
+      "actual_class": "CONFIRMED"
+    },
+    {
+      "model_name": "lr_k2_1759560980",
+      "model_type": "linear_regression",
+      "dataset": "k2",
+      "prediction": "REFUTED",
+      "confidence": 1.0,
+      "actual_class": "CONFIRMED"
+    }
+  ],
+  "explanations_generated": [
+    {
+      "model_name": "rf_kepler_1759560980",
+      "model_type": "random_forest",
+      "dataset": "kepler",
+      "total_features": 38,
+      "top_features": [
+        [
+          "koi_model_snr",
+          0.08155211092110357
+        ],
+        [
+          "koi_prad",
+          0.07897962419278998
+        ],
+        [
+          "koi_steff_err2",
+          0.0768707567133564
+        ],
+        [
+          "koi_steff_err1",
+          0.07178024712778015
+        ],
+        [
+          "koi_duration_err1",
+          0.04985727971765759
+        ],
+        [
+          "koi_duration_err2",
+          0.046315979620799655
+        ],
+        [
+          "koi_prad_err1",
+          0.044983500044498734
+        ],
+        [
+          "koi_prad_err2",
+          0.04434467098834788
+        ],
+        [
+          "koi_period",
+          0.03500546407259471
+        ],
+        [
+          "koi_insol_err1",
+          0.03202130665446006
+        ]
+      ]
+    },
+    {
+      "model_name": "dt_tess_1759560980",
+      "model_type": "decision_tree",
+      "dataset": "tess",
+      "total_features": 41,
+      "top_features": [
+        [
+          "st_tmag",
+          0.15709512025910716
+        ],
+        [
+          "pl_trandep",
+          0.09859921386443549
+        ],
+        [
+          "pl_orbper",
+          0.07392364220155909
+        ],
+        [
+          "pl_eqt",
+          0.06004938396283696
+        ],
+        [
+          "st_disterr2",
+          0.05970100644395757
+        ],
+        [
+          "pl_trandurherr1",
+          0.058916315893861565
+        ],
+        [
+          "pl_trandurh",
+          0.05211357791800962
+        ],
+        [
+          "dec",
+          0.040555705272558994
+        ],
+        [
+          "pl_rade",
+          0.037229907546895535
+        ],
+        [
+          "pl_radeerr2",
+          0.03309655986030764
+        ]
+      ]
+    }
+  ],
+  "classification_results": {
+    "kepler": {
+      "target_column": "koi_disposition",
+      "unique_classes": [
+        "CONFIRMED",
+        "CANDIDATE",
+        "FALSE POSITIVE"
+      ],
+      "has_confirmed": true,
+      "has_false_positive": true,
+      "classification_capable": true
+    },
+    "tess": {
+      "target_column": "tfopwg_disp",
+      "unique_classes": [
+        "FP",
+        "PC",
+        "KP",
+        "APC"
+      ],
+      "has_confirmed": false,
+      "has_false_positive": true,
+      "classification_capable": false
+    },
+    "k2": {
+      "target_column": "disposition",
+      "unique_classes": [
+        "CONFIRMED",
+        "CANDIDATE"
+      ],
+      "has_confirmed": true,
+      "has_false_positive": false,
+      "classification_capable": false
+    }
+  }
+}
