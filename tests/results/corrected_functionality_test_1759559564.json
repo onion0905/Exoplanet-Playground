@@ -1,0 +1,81 @@
+{
+  "test_start_time": "2025-10-04T14:32:42.848165",
+  "tests_run": 5,
+  "tests_passed": 3,
+  "tests_failed": 2,
+  "test_details": {
+    "Dataset Access and Classification": {
+      "passed": true,
+      "details": {
+        "datasets_available": 3,
+        "datasets_analyzed": 3,
+        "classification_info": {
+          "kepler": {
+            "total_records": 9564,
+            "clean_records": 9564,
+            "target_column": "koi_disposition",
+            "features": 39,
+            "sample_size": 10
+          },
+          "tess": {
+            "total_records": 7699,
+            "clean_records": 7699,
+            "target_column": "tfopwg_disp",
+            "features": 42,
+            "sample_size": 10
+          },
+          "k2": {
+            "total_records": 4004,
+            "clean_records": 4004,
+            "target_column": "disposition",
+            "features": 59,
+            "sample_size": 10
+          }
+        }
+      },
+      "error": null
+    },
+    "Model Training and Saving": {
+      "passed": true,
+      "details": {
+        "training_successful": true,
+        "model_name": "test_functionality_1759559563",
+        "training_accuracy": "N/A",
+        "validation_accuracy": "N/A",
+        "model_saved_to_correct_dir": false,
+        "model_path": null
+      },
+      "error": null
+    },
+    "Prediction Functionality": {
+      "passed": false,
+      "details": {},
+      "error": "Failed to load model: Expecting value: line 27 column 24 (char 635)"
+    },
+    "Explanation Functionality": {
+      "passed": false,
+      "details": {},
+      "error": "Failed to load model for explanation"
+    },
+    "Column Selection Training": {
+      "passed": true,
+      "details": {
+        "available_models": 7,
+        "available_datasets": 3,
+        "session_created": true,
+        "data_loaded": true,
+        "data_shape": [
+          9564,
+          49
+        ]
+      },
+      "error": null
+    }
+  },
+  "errors": [
+    "Prediction Functionality: Failed to load model: Expecting value: line 27 column 24 (char 635)",
+    "Explanation Functionality: Failed to load model for explanation"
+  ],
+  "test_end_time": "2025-10-04T14:32:44.274889",
+  "success_rate": 60.0
+}

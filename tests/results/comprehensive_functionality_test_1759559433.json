@@ -1,0 +1,48 @@
+{
+  "test_start_time": "2025-10-04T14:30:33.043911",
+  "tests_run": 6,
+  "tests_passed": 0,
+  "tests_failed": 6,
+  "test_details": {
+    "Dataset Classification Analysis": {
+      "passed": false,
+      "details": {},
+      "error": "list indices must be integers or slices, not str"
+    },
+    "Column Selection Training": {
+      "passed": false,
+      "details": {},
+      "error": "TrainingAPI.start_training_session() got an unexpected keyword argument 'session_name'. Did you mean 'session_id'?"
+    },
+    "Prediction API": {
+      "passed": false,
+      "details": {},
+      "error": "Failed to load model: [Errno 2] No such file or directory: '/home/brine/OneDrive/Work/Exoplanet-Playground/ML/models/user/linear_regression_tess_1759419430'"
+    },
+    "Explanation API": {
+      "passed": false,
+      "details": {},
+      "error": "Failed to load model for explanation"
+    },
+    "User Data Upload": {
+      "passed": false,
+      "details": {},
+      "error": "'data'"
+    },
+    "End-to-End Workflow": {
+      "passed": false,
+      "details": {},
+      "error": "TrainingAPI.start_training_session() got an unexpected keyword argument 'session_name'. Did you mean 'session_id'?"
+    }
+  },
+  "errors": [
+    "Dataset Classification Analysis: list indices must be integers or slices, not str",
+    "Column Selection Training: TrainingAPI.start_training_session() got an unexpected keyword argument 'session_name'. Did you mean 'session_id'?",
+    "Prediction API: Failed to load model: [Errno 2] No such file or directory: '/home/brine/OneDrive/Work/Exoplanet-Playground/ML/models/user/linear_regression_tess_1759419430'",
+    "Explanation API: Failed to load model for explanation",
+    "User Data Upload: 'data'",
+    "End-to-End Workflow: TrainingAPI.start_training_session() got an unexpected keyword argument 'session_name'. Did you mean 'session_id'?"
+  ],
+  "test_end_time": "2025-10-04T14:30:33.150181",
+  "success_rate": 0.0
+}
