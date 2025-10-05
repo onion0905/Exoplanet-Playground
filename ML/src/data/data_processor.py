@@ -5,6 +5,7 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder, RobustScaler
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
 import logging
+from .column_filter import ColumnFilter
 
 
 class DataProcessor:
@@ -18,6 +19,7 @@ class DataProcessor:
         self.feature_names = None
         self.target_name = None
         self.processing_config = {}
+        self.column_filter = ColumnFilter()
         
     def create_target_variable(self, data: pd.DataFrame, 
                              target_column: str,
@@ -47,6 +49,10 @@ class DataProcessor:
             target_series_upper = target_series.str.upper()
             for key, value in disposition_mapping.items():
                 target_series.loc[target_series_upper == key] = value
+        
+        # Apply dataset-specific label mapping if needed
+        if hasattr(self.column_filter, 'dataset_type') and self.column_filter.dataset_type:
+            target_series = self.column_filter.map_target_labels(target_series, self.column_filter.dataset_type)
         
         self.target_name = target_column
         return target_series
@@ -79,6 +85,32 @@ class DataProcessor:
         
         self.feature_names = valid_columns
         return df[valid_columns]
+    
+    def apply_nasa_api_filtering(self, data: pd.DataFrame, 
+                               dataset_type: Optional[str] = None,
+                               target_col: Optional[str] = None) -> Tuple[pd.DataFrame, List[str]]:
+        """
+        Apply NASA Exoplanet Archive API-based column filtering.
+        
+        Args:
+            data: Input DataFrame
+            dataset_type: Dataset type ('kepler', 'k2', 'tess'). Auto-detected if None.
+            target_col: Target column name. Auto-detected if None.
+            
+        Returns:
+            Tuple of (filtered_df, list_of_excluded_columns)
+        """
+        filtered_df, excluded_cols = self.column_filter.filter_columns(
+            data, dataset_type=dataset_type, target_col=target_col
+        )
+        
+        # Update target name if auto-detected
+        if self.column_filter.target_column:
+            self.target_name = self.column_filter.target_column
+        
+        self.logger.info(f"NASA API filtering complete. Excluded {len(excluded_cols)} columns.")
+        
+        return filtered_df, excluded_cols
     
     def handle_missing_values(self, X: pd.DataFrame, 
                             strategy: str = 'median',
@@ -228,12 +260,12 @@ class DataProcessor:
         default_config = {
             'handle_missing': True,
             'missing_strategy': 'median',
-            'scale_features': True,
+            'scale_features': False,  # Don't scale by default - matches train_rf_clean.py
             'scaler_type': 'standard',
             'encode_categorical': True,
             'remove_outliers': False,
             'outlier_method': 'iqr',
-            'max_missing_ratio': 0.5
+            'max_missing_ratio': 0.999  # Conservative - only exclude 100% missing columns
         }
         
         if preprocessing_config:
