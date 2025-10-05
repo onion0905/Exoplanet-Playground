@@ -167,22 +167,56 @@ class DeepLearningModel(BaseExoplanetModel):
         self.training_history = metrics
         return metrics
     
-    def predict(self, X: pd.DataFrame) -> np.ndarray:
-        """Make predictions."""
+    def predict(self, X: pd.DataFrame, explain: bool = False):
+        """Predict class labels for samples in X. If explain=True, return per-sample top 5 feature names and confidence."""
         if not self.is_trained:
             raise ValueError("Model must be trained before prediction")
-            
         X = self.preprocess_input(X)
         X_scaled = self.scaler.transform(X)
         predictions = self.model.predict(X_scaled, verbose=0)
-        
         n_classes = len(self.target_classes)
         if n_classes == 2:
             pred_classes = (predictions > 0.5).astype(int).flatten()
+            proba = np.column_stack([1 - predictions.flatten(), predictions.flatten()])
         else:
             pred_classes = np.argmax(predictions, axis=1)
-            
-        return self.label_encoder.inverse_transform(pred_classes)
+            proba = predictions
+        labels = self.label_encoder.inverse_transform(pred_classes)
+        if not explain:
+            return labels
+        class_indices = [list(self.label_encoder.classes_).index(l) for l in labels]
+        confidences = [proba[i, idx] for i, idx in enumerate(class_indices)]
+        explanations = []
+        try:
+            import shap
+            explainer = shap.DeepExplainer(self.model, X_scaled)
+            shap_values = explainer.shap_values(X_scaled)
+            if isinstance(shap_values, list):
+                for i, idx in enumerate(class_indices):
+                    sample_shap = dict(zip(self.feature_names, shap_values[idx][i]))
+                    top5 = sorted(sample_shap.items(), key=lambda x: -abs(x[1]))[:5]
+                    explanations.append([k for k, v in top5])
+            else:
+                for row in shap_values:
+                    sample_shap = dict(zip(self.feature_names, row))
+                    top5 = sorted(sample_shap.items(), key=lambda x: -abs(x[1]))[:5]
+                    explanations.append([k for k, v in top5])
+        except Exception as e:
+            # fallback: use feature importances
+            try:
+                importances = self.get_feature_importance()
+                top5 = sorted(importances.items(), key=lambda x: -abs(x[1]))[:5]
+                explanations = [[k for k, v in top5] for _ in range(len(X_scaled))]
+            except Exception:
+                explanations = [[f for f in self.feature_names[:5]] for _ in range(len(X_scaled))]
+        return [
+            {
+                'label': str(labels[i]),
+                'confidence': float(confidences[i]),
+                'top_features': explanations[i]
+            }
+            for i in range(len(labels))
+        ]
     
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
         """Return prediction probabilities."""

@@ -63,14 +63,55 @@ class LinearRegressionModel(BaseExoplanetModel):
         self.training_history = metrics
         return metrics
     
-    def predict(self, X: pd.DataFrame) -> np.ndarray:
-        """Make predictions."""
+    def predict(self, X: pd.DataFrame, explain: bool = False):
+        """Predict class labels for samples in X. If explain=True, return per-sample top 5 feature names and confidence."""
         if not self.is_trained:
             raise ValueError("Model must be trained before prediction")
-            
         X = self.preprocess_input(X)
         X_scaled = self.scaler.transform(X)
-        return self.model.predict(X_scaled)
+        preds = self.model.predict(X_scaled)
+        if not explain:
+            return preds
+        proba = self.model.predict_proba(X_scaled)
+        class_indices = [list(self.model.classes_).index(p) for p in preds]
+        confidences = [proba[i, idx] for i, idx in enumerate(class_indices)]
+        explanations = []
+        try:
+            import shap
+            import warnings
+            warnings.filterwarnings("ignore", category=UserWarning)
+            explainer = shap.LinearExplainer(self.model, X_scaled)
+            shap_values = explainer.shap_values(X_scaled)
+            if isinstance(shap_values, list):
+                for i, idx in enumerate(class_indices):
+                    sample_shap = dict(zip(self.feature_names, shap_values[idx][i]))
+                    top5 = sorted(sample_shap.items(), key=lambda x: -abs(x[1]))[:5]
+                    explanations.append([k for k, v in top5])
+            else:
+                for row in shap_values:
+                    sample_shap = dict(zip(self.feature_names, row))
+                    top5 = sorted(sample_shap.items(), key=lambda x: -abs(x[1]))[:5]
+                    explanations.append([k for k, v in top5])
+        except Exception as e:
+            # fallback: use coef_
+            if hasattr(self.model, 'coef_') and self.model.coef_ is not None:
+                if len(self.model.coef_.shape) > 1:
+                    importance_scores = np.mean(np.abs(self.model.coef_), axis=0)
+                else:
+                    importance_scores = np.abs(self.model.coef_[0])
+                feature_ranking = np.argsort(-importance_scores)
+                top5 = [self.feature_names[i] for i in feature_ranking[:5]]
+                explanations = [top5 for _ in range(len(X_scaled))]
+            else:
+                explanations = [[f for f in self.feature_names[:5]] for _ in range(len(X_scaled))]
+        return [
+            {
+                'label': str(preds[i]),
+                'confidence': float(confidences[i]),
+                'top_features': explanations[i]
+            }
+            for i in range(len(preds))
+        ]
     
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
         """Return prediction probabilities."""
