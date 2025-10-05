@@ -299,8 +299,25 @@ function PretrainedPage() {
                   <h4 className="text-white text-lg font-semibold mb-4">Select Data Format</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {datasets.map((dataset) => (
-                      <div key={dataset.id} className="flex items-center justify-between p-4 bg-gray-700/30 rounded-lg border border-gray-600/30">
+                      <div 
+                        key={dataset.id} 
+                        className={`flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
+                          selectedTrainingFormat === dataset.id
+                            ? 'bg-blue-500/20 border-blue-500'
+                            : 'bg-gray-700/30 border-gray-600/30 hover:bg-gray-600/40'
+                        }`}
+                        onClick={() => setSelectedTrainingFormat(dataset.id)}
+                      >
                         <div className="flex items-center">
+                          <div className={`w-4 h-4 rounded-full border-2 mr-3 ${
+                            selectedTrainingFormat === dataset.id
+                              ? 'border-blue-500 bg-blue-500'
+                              : 'border-gray-400'
+                          }`}>
+                            {selectedTrainingFormat === dataset.id && (
+                              <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>
+                            )}
+                          </div>
                           <div className="w-8 h-8 rounded-lg mr-3" style={{ backgroundColor: dataset.color + '20' }}>
                             <img src={dataset.img} alt={dataset.name} className="w-full h-full object-cover rounded-lg" />
                           </div>
@@ -310,7 +327,10 @@ function PretrainedPage() {
                           variant="outlined"
                           size="small"
                           startIcon={<DownloadIcon />}
-                          onClick={() => handleDownloadSample(dataset.id, 'training')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownloadSample(dataset.id, 'training');
+                          }}
                           sx={{
                             color: 'white',
                             borderColor: 'rgba(255, 255, 255, 0.3)',

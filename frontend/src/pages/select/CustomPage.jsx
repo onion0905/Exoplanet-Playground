@@ -32,6 +32,7 @@ function CustomPage() {
   // 用戶上傳數據的格式選擇
   const [selectedTrainingFormat, setSelectedTrainingFormat] = useState('kepler');
   const [selectedTestingFormat, setSelectedTestingFormat] = useState('kepler');
+  const [showTestingFormatSelection, setShowTestingFormatSelection] = useState(false);
 
   const datasets = [
     {
@@ -438,8 +439,25 @@ function CustomPage() {
                     <h4 className="text-white text-lg font-semibold mb-4">Select Data Format</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {datasets.map((dataset) => (
-                        <div key={dataset.id} className="flex items-center justify-between p-4 bg-gray-700/30 rounded-lg border border-gray-600/30">
+                        <div 
+                          key={dataset.id} 
+                          className={`flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
+                            selectedTrainingFormat === dataset.id
+                              ? 'bg-blue-500/20 border-blue-500'
+                              : 'bg-gray-700/30 border-gray-600/30 hover:bg-gray-600/40'
+                          }`}
+                          onClick={() => setSelectedTrainingFormat(dataset.id)}
+                        >
                           <div className="flex items-center">
+                            <div className={`w-4 h-4 rounded-full border-2 mr-3 ${
+                              selectedTrainingFormat === dataset.id
+                                ? 'border-blue-500 bg-blue-500'
+                                : 'border-gray-400'
+                            }`}>
+                              {selectedTrainingFormat === dataset.id && (
+                                <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>
+                              )}
+                            </div>
                             <div className="w-8 h-8 rounded-lg mr-3" style={{ backgroundColor: dataset.color + '20' }}>
                               <img src={dataset.img} alt={dataset.name} className="w-full h-full object-cover rounded-lg" />
                             </div>
@@ -449,7 +467,10 @@ function CustomPage() {
                             variant="outlined"
                             size="small"
                             startIcon={<DownloadIcon />}
-                            onClick={() => handleDownloadSample(dataset.id, 'training')}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadSample(dataset.id, 'training');
+                            }}
                             sx={{
                               color: 'white',
                               borderColor: 'rgba(255, 255, 255, 0.3)',
@@ -553,7 +574,84 @@ function CustomPage() {
 
                     {/* Testing Data Upload */}
                     <div className="space-y-2">
-                      <h4 className="text-white text-lg font-medium mb-4">Testing Data</h4>
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-white text-lg font-medium">Testing Data</h4>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => setShowTestingFormatSelection(!showTestingFormatSelection)}
+                          sx={{
+                            color: 'white',
+                            borderColor: 'rgba(255, 255, 255, 0.3)',
+                            fontSize: '0.75rem',
+                            '&:hover': {
+                              borderColor: 'rgba(255, 255, 255, 0.5)',
+                              backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                            }
+                          }}
+                        >
+                          {showTestingFormatSelection ? 'Hide Format' : 'Select Format'}
+                        </Button>
+                      </div>
+                      
+                      {/* Testing Data Format Selection */}
+                      {showTestingFormatSelection && (
+                        <div className="mb-4 p-4 bg-gray-700/20 rounded-lg border border-gray-600/30">
+                          <h5 className="text-white text-sm font-medium mb-3">Select Testing Data Format</h5>
+                          <div className="grid grid-cols-1 gap-2">
+                            {datasets.map((dataset) => (
+                              <div 
+                                key={dataset.id} 
+                                className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
+                                  selectedTestingFormat === dataset.id
+                                    ? 'bg-purple-500/20 border-purple-500'
+                                    : 'bg-gray-600/30 border-gray-500/30 hover:bg-gray-500/40'
+                                }`}
+                                onClick={() => setSelectedTestingFormat(dataset.id)}
+                              >
+                                <div className="flex items-center">
+                                  <div className={`w-3 h-3 rounded-full border-2 mr-2 ${
+                                    selectedTestingFormat === dataset.id
+                                      ? 'border-purple-500 bg-purple-500'
+                                      : 'border-gray-400'
+                                  }`}>
+                                    {selectedTestingFormat === dataset.id && (
+                                      <div className="w-1 h-1 bg-white rounded-full m-0.5"></div>
+                                    )}
+                                  </div>
+                                  <div className="w-6 h-6 rounded mr-2" style={{ backgroundColor: dataset.color + '20' }}>
+                                    <img src={dataset.img} alt={dataset.name} className="w-full h-full object-cover rounded" />
+                                  </div>
+                                  <span className="text-white text-sm font-medium">{dataset.name}</span>
+                                </div>
+                                <Button
+                                  variant="outlined"
+                                  size="small"
+                                  startIcon={<DownloadIcon />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDownloadSample(dataset.id, 'testing');
+                                  }}
+                                  sx={{
+                                    color: 'white',
+                                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                                    fontSize: '0.65rem',
+                                    minWidth: 'auto',
+                                    px: 1,
+                                    py: 0.5,
+                                    '&:hover': {
+                                      borderColor: 'rgba(255, 255, 255, 0.5)',
+                                      backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                                    }
+                                  }}
+                                >
+                                  Sample
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div
                         className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 backdrop-blur-sm ${
                           dragActiveTest 
