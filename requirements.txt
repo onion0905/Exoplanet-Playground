@@ -1,3 +1,4 @@
+shap
 # Exoplanet Playground - Complete Requirements
 
 # Web Framework
