@@ -359,3 +359,68 @@ class TrainingAPI:
                 'status': 'error',
                 'error': str(e)
             }
+    
+    def quick_configure_training(self, data: pd.DataFrame, config: Dict[str, Any]) -> str:
+        """
+        Simplified method to configure training with a DataFrame directly.
+        
+        Args:
+            data: Input DataFrame
+            config: Configuration dictionary
+            
+        Returns:
+            session_id for the configured training
+        """
+        import uuid
+        session_id = str(uuid.uuid4())[:8]
+        
+        # Apply NASA API filtering if requested
+        if config.get('use_nasa_filtering', False):
+            data, excluded_cols = self.data_processor.apply_nasa_api_filtering(data)
+            self.logger.info(f"Applied NASA API filtering, excluded {len(excluded_cols)} columns")
+        
+        # Start session and store data
+        self.start_training_session(session_id)
+        self.current_session[session_id]['data'] = data
+        self.current_session[session_id]['data_info'] = {
+            'shape': data.shape,
+            'validation': {'dataset_type': 'auto-detected'}
+        }
+        
+        # Configure training
+        training_config = {
+            'model_type': config.get('model_type', 'random_forest'),
+            'target_column': config['target_column'],
+            'feature_columns': config.get('feature_columns'),
+            'hyperparameters': config.get('hyperparameters', {}),
+            'preprocessing_config': config.get('preprocessing_config', {})
+        }
+        
+        self.configure_training(session_id, training_config)
+        
+        return session_id
+    
+    def quick_train_model(self, session_id: str, model_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Simplified method to train a model.
+        
+        Args:
+            session_id: Session ID from configure_training
+            model_config: Model configuration
+            
+        Returns:
+            Training results
+        """
+        # Update session with model config
+        if session_id not in self.current_session:
+            raise ValueError(f"Session {session_id} not found")
+        
+        session = self.current_session[session_id]
+        session['training_config']['model_type'] = model_config.get('model_type', 'random_forest')
+        
+        # Update hyperparameters, excluding non-hyperparameter keys
+        hyperparams = {k: v for k, v in model_config.items() if k != 'model_type'}
+        session['training_config']['hyperparameters'].update(hyperparams)
+        
+        # Start training
+        return self.start_training(session_id)
