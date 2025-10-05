@@ -28,7 +28,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DownloadIcon from '@mui/icons-material/Download';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 
-function ResultPage() {
+function CustomResultPage() {
   const navigate = useNavigate();
   const [expandedRows, setExpandedRows] = useState({});
   const [openDialog, setOpenDialog] = useState(false);
@@ -423,4 +423,4 @@ function ResultPage() {
   );
 }
 
-export default ResultPage;
+export default CustomResultPage;

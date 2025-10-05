@@ -6,7 +6,7 @@ import LearnPage from "./pages/learn/LearnPage";
 import SelectPage from "./pages/select/SelectPage";
 import TrainingPage from "./pages/training/TrainingPage";
 import PredictPage from "./pages/predict/PredictPage";
-import ResultPage from "./pages/result/ResultPage";
+import CustomResultPage from "./pages/result/CustomResultPage";
 
 function App() {
   return (
@@ -18,7 +18,7 @@ function App() {
           <Route path="/select" element={<SelectPage />} />
           <Route path="/training" element={<TrainingPage />} />
           <Route path="/predict" element={<PredictPage />} />
-          <Route path="/result" element={<ResultPage />} />
+          <Route path="/custom_result" element={<CustomResultPage />} />
         </Routes>
       </Router>
     </ThemeProvider>

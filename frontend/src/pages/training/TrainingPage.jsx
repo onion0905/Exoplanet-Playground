@@ -41,7 +41,7 @@ function TrainingPage() {
         if (currentStepIndex === trainingSteps.length - 1) {
           setIsComplete(true);
           setTimeout(() => {
-            navigate("/result");
+            navigate("/custom_result");
           }, 2000); // 2秒後跳轉到 result 頁面
         }
         
