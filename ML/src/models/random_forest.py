@@ -7,6 +7,69 @@ from .base_model import BaseExoplanetModel
 
 
 class RandomForestModel(BaseExoplanetModel):
+    def predict(self, X: pd.DataFrame, explain: bool = False):
+        """Predict class labels for samples in X. If explain=True, return per-sample top 5 feature names and confidence."""
+        if not self.is_trained:
+            raise ValueError("Model must be trained before prediction")
+        X = self.preprocess_input(X)
+        preds = self.model.predict(X)
+        if not explain:
+            return preds
+        # Compute confidence scores (max probability for predicted class)
+        proba = self.model.predict_proba(X)
+        class_indices = [list(self.model.classes_).index(p) for p in preds]
+        confidences = [proba[i, idx] for i, idx in enumerate(class_indices)]
+        # Compute per-sample feature importances using tree SHAP (mean absolute SHAP value per feature)
+        try:
+            import shap
+            explainer = shap.TreeExplainer(self.model)
+            shap_values = explainer.shap_values(X)
+            # For multiclass, shap_values is a list (one per class)
+            if isinstance(shap_values, list):
+                # Pick the SHAP values for the predicted class for each sample
+                explanations = []
+                for i, idx in enumerate(class_indices):
+                    sample_shap = dict(zip(X.columns, shap_values[idx][i]))
+                    # Get top 5 by absolute value
+                    top5 = sorted(sample_shap.items(), key=lambda x: -abs(x[1]))[:5]
+                    explanations.append([k for k, v in top5])
+            else:
+                explanations = []
+                for row in shap_values:
+                    sample_shap = dict(zip(X.columns, row))
+                    top5 = sorted(sample_shap.items(), key=lambda x: -abs(x[1]))[:5]
+                    explanations.append([k for k, v in top5])
+        except Exception as e:
+            # fallback: use feature importances
+            try:
+                importances = self.get_feature_importance()
+                top5 = sorted(importances.items(), key=lambda x: -abs(x[1]))[:5]
+                explanations = [[k for k, v in top5] for _ in range(len(X))]
+            except Exception:
+                explanations = [[f for f in self.feature_names[:5]] for _ in range(len(X))]
+        # Determine dataset type by feature names
+        is_kepler = any(f.startswith('koi_') for f in self.feature_names)
+        is_k2 = any(f in ['disp_refname', 'disc_refname', 'default_flag', 'st_refname'] for f in self.feature_names)
+        kepler_exclude = ['koi_pdisposition', 'koi_score', 'koi_fpflag']
+        k2_exclude = ['disp_refname', 'disc_refname', 'default_flag', 'st_refname']
+        def filter_features(feats):
+            if is_kepler:
+                allowed = [f for f in feats if not any(f.startswith(prefix) for prefix in kepler_exclude)]
+            elif is_k2:
+                allowed = [f for f in feats if f not in k2_exclude]
+            else:
+                allowed = feats
+            return allowed[:5]
+        result = []
+        for i in range(len(preds)):
+            feats = explanations[i]
+            filtered = filter_features(feats)
+            result.append({
+                'label': str(preds[i]),
+                'confidence': float(confidences[i]),
+                'top_features': filtered
+            })
+        return result
     """Random Forest model for exoplanet classification."""
     
     def __init__(self):

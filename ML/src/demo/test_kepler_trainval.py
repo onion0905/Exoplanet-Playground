@@ -103,13 +103,13 @@ for model_type in model_types:
         except Exception as e:
             print(f"Prediction on kepler_test.csv failed for {model_type}: {e}")
 
-    print("\n=== Feature Importances ===")
-    importances = api.get_feature_importances(session_id)
-    if importances:
-        for feat, imp in importances:
-            print(f"{feat}: {imp:.4f}")
-    else:
-        print("Model does not support feature importances.")
+    # print("\n=== Feature Importances ===")
+    # importances = api.get_feature_importances(session_id)
+    # if importances:
+    #     for feat, imp in importances:
+    #         print(f"{feat}: {imp:.4f}")
+    # else:
+    #     print("Model does not support feature importances.")
 
     print("\n=== Predict on First 3 Test Samples (top 5 features) ===")
     try:

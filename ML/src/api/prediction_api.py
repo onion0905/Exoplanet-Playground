@@ -10,6 +10,67 @@ from ..data.data_processor import DataProcessor
 
 
 class PredictionAPI:
+
+    def predict_with_explanation(self, model_id: str, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Predict with per-sample explanations and confidence. Returns label, confidence, and top 5 features."""
+        if model_id not in self.loaded_models:
+            raise ValueError(f"Model {model_id} not loaded")
+        model = self.loaded_models[model_id]['model']
+        input_df = pd.DataFrame([input_data])
+        # Ensure all required features are present
+        for col in model.feature_names:
+            if col not in input_df.columns:
+                input_df[col] = float('nan')
+        input_df = input_df[model.feature_names]
+        # Predict
+        preds = model.predict(input_df)
+        proba = model.predict_proba(input_df)
+        class_indices = [list(model.model.classes_).index(p) for p in preds]
+        confidences = [proba[i, idx] for i, idx in enumerate(class_indices)]
+        # SHAP or feature importances
+        try:
+            import shap
+            explainer = shap.TreeExplainer(model.model)
+            shap_values = explainer.shap_values(input_df)
+            if isinstance(shap_values, list):
+                explanations = []
+                for i, idx in enumerate(class_indices):
+                    sample_shap = dict(zip(input_df.columns, shap_values[idx][i]))
+                    top5 = sorted(sample_shap.items(), key=lambda x: -abs(x[1]))[:5]
+                    explanations.append([k for k, v in top5])
+            else:
+                explanations = []
+                for row in shap_values:
+                    sample_shap = dict(zip(input_df.columns, row))
+                    top5 = sorted(sample_shap.items(), key=lambda x: -abs(x[1]))[:5]
+                    explanations.append([k for k, v in top5])
+        except Exception:
+            try:
+                importances = model.get_feature_importance()
+                top5 = sorted(importances.items(), key=lambda x: -abs(x[1]))[:5]
+                explanations = [[k for k, v in top5] for _ in range(len(input_df))]
+            except Exception:
+                explanations = [[f for f in model.feature_names[:5]] for _ in range(len(input_df))]
+        # Filter features (dataset-specific)
+        is_kepler = any(f.startswith('koi_') for f in model.feature_names)
+        is_k2 = any(f in ['disp_refname', 'disc_refname', 'default_flag', 'st_refname'] for f in model.feature_names)
+        kepler_exclude = ['koi_pdisposition', 'koi_score', 'koi_fpflag']
+        k2_exclude = ['disp_refname', 'disc_refname', 'default_flag', 'st_refname']
+        def filter_features(feats):
+            if is_kepler:
+                allowed = [f for f in feats if not any(f.startswith(prefix) for prefix in kepler_exclude)]
+            elif is_k2:
+                allowed = [f for f in feats if f not in k2_exclude]
+            else:
+                allowed = feats
+            return allowed[:5]
+        feats = explanations[0]
+        filtered = filter_features(feats)
+        return {
+            'label': str(preds[0]),
+            'confidence': float(confidences[0]),
+            'top_features': filtered
+        }
     """API interface for making predictions with trained exoplanet models."""
     
     def __init__(self):
