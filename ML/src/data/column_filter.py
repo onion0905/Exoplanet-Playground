@@ -22,10 +22,11 @@ KEPLER_EXCLUDE_PATTERNS = [
 K2_EXCLUDE_PATTERNS = [
     # Identification Columns
     'epic_candname', 'epic_hostname', 'k2_name', 'epic_name',
-    # Archive Information (excluding target)
+    # Archive Information (excluding target - disposition is never excluded as it's the target)
     'disp_prov', 'vet_stat', 'vet_date', 'soltype',
-    # Disposition Columns
-    'score', 'fpflag_', 'comment', 'sy_pnum', 'hostname', 'pl_name',
+    # Disposition Columns (commented out in train_rf_clean.py for better performance)
+    # 'score', 'fpflag_', 'comment', 
+    'sy_pnum', 'hostname', 'pl_name',
     # Other metadata
     'rowid', 'delivname', 'datalink_', 'quarters'
 ]
@@ -33,10 +34,10 @@ K2_EXCLUDE_PATTERNS = [
 TESS_EXCLUDE_PATTERNS = [
     # Identification Columns
     'tid', 'toi', 'tic_', 'toipfx', 'ctoi',
-    # Archive Information (excluding target)
+    # Archive Information (excluding target - tfopwg_disp is never excluded as it's the target)
     'disposition', 'disp_prov',
-    # Disposition Columns
-    'score', 'fpflag_', 'comment', 'vet_stat', 'vet_date',
+    # Disposition Columns (commented out in train_rf_clean.py for better performance)
+    # 'score', 'fpflag_', 'comment', 'vet_stat', 'vet_date',
     # Other metadata  
     'rowid', 'delivname', 'datalink_'
 ]

@@ -27,9 +27,14 @@ import json
 
 
 def test_nasa_api_filtering():
-    """Test the NASA API column filtering with all three datasets."""
+    """Test NASA API column filtering across all exoplanet datasets using RAW data for best performance."""
     
-    datasets = ['kepler', 'k2', 'tess']
+    # Datasets to test - use RAW data like train_rf_clean.py for maximum performance
+    datasets = {
+        'kepler': 'data/kepler_raw.csv',
+        'k2': 'data/k2_raw.csv', 
+        'tess': 'data/tess_raw.csv'
+    }
     
     results = {}
     
@@ -39,12 +44,13 @@ def test_nasa_api_filtering():
         print(f"{'='*60}")
         
         try:
-            # Initialize API with proper data directory
+            # Initialize API
             api = TrainingAPI()
             
-            # Load data using the NASA dataset loader (handles comment lines properly)
-            data_loader = DataLoader()
-            df = data_loader.load_nasa_dataset(dataset_name)
+            # Load RAW data directly (same as train_rf_clean.py for maximum performance)
+            df_path = datasets[dataset_name]
+            print(f"Loading raw data from: {df_path}")
+            df = pd.read_csv(df_path, comment='#')
             
             print(f"Original data shape: {df.shape}")
             print(f"Original columns: {len(df.columns)}")
@@ -78,28 +84,31 @@ def test_nasa_api_filtering():
             # Configure training with NASA API filtering
             config = {
                 'target_column': target_col,
-                'feature_columns': feature_cols[:50] if len(feature_cols) > 50 else feature_cols,  # Limit features for quick test
+                'feature_columns': feature_cols,  # Use all available features for best performance
                 'model_type': 'random_forest',
                 'use_nasa_filtering': False,  # Already filtered above
                 'preprocessing_config': {
-                    'max_missing_ratio': 0.999  # Only exclude columns with >99.9% missing (effectively 100% missing)
-                },
-                'hyperparameters': {
-                    'n_estimators': 10,  # Small for quick test
-                    'max_depth': 5,
-                    'random_state': 42
+                    'max_missing_ratio': 0.999,  # Only exclude columns with >99.9% missing
+                    'handle_missing': True,
+                    'missing_strategy': 'median',  # Same as train_rf_clean.py
+                    'scale_features': False,       # Don't scale (RF works better without)
+                    'encode_categorical': True,
+                    'remove_outliers': False
                 }
             }
             
             session_id = api.quick_configure_training(df_filtered, config)
             print(f"Training configured. Session ID: {session_id}")
             
-            # Train model
+            # Train model with high-performance settings
             model_config = {
                 'model_type': 'random_forest',
-                'n_estimators': 10,  # Small for quick test
-                'max_depth': 5,
-                'random_state': 42
+                'n_estimators': 300,  # High-performance settings to match train_rf_clean.py
+                'max_depth': 20,
+                'min_samples_split': 2,
+                'min_samples_leaf': 1,
+                'random_state': 42,
+                'n_jobs': -1
             }
             
             training_results = api.quick_train_model(session_id, model_config)

@@ -4,7 +4,7 @@ import Navbar from "../../components/Navbar";
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { Button, LinearProgress, Box, Typography } from '@mui/material';
 
-function TrainingPage() {
+function PretrainedProgressPage() {
   const navigate = useNavigate();
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState('Initializing...');
@@ -41,8 +41,8 @@ function TrainingPage() {
         if (currentStepIndex === trainingSteps.length - 1) {
           setIsComplete(true);
           setTimeout(() => {
-            navigate("/predict");
-          }, 2000); // 2秒後跳轉到 predict 頁面
+            navigate("/pretrained/result");
+          }, 2000); // 2秒後跳轉到 result 頁面
         }
         
         currentStepIndex++;
@@ -140,7 +140,7 @@ function TrainingPage() {
                 <span className="text-white text-sm">✓</span>
               </div>
               <Typography variant="body1" className="text-green-200 font-medium">
-                Training completed! Redirecting to prediction page...
+                Training completed! Redirecting to results page...
               </Typography>
             </div>
           </div>
@@ -150,4 +150,4 @@ function TrainingPage() {
   );
 }
 
-export default TrainingPage;
+export default PretrainedProgressPage;
