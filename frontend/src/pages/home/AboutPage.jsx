@@ -20,7 +20,13 @@ function AboutPage() {
           Our project, Exoplanet Playground, empowers users to explore the unknown through the power of machine learning. The website features two main sections: one introduces exoplanets and machine learning fundamentals, helping users without prior background understand the basics. 
           </p>
           <p className="mb-6">
-            Learn about how scientists discover exoplanets, the data they collect, and how machine learning can help classify these distant worlds.
+          The other section provides a hands-on interactive environment, where users can select and train models to detect exoplanets — even using their own datasets.
+          </p>
+          <p className="mb-6">
+          By training and deploying seven different models on NASA’s exoplanet datasets (KOI, TOI, and K2), we’ve created an engaging platform where users can test, compare, and learn from real data.
+          </p>
+          <p className="mb-6">
+          We hope this platform inspires more people to discover the beauty of exoplanets and to develop a lasting interest in aerospace — which is our ultimate goal! 
           </p>
         </div>
 

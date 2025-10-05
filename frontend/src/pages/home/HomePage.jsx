@@ -136,7 +136,7 @@ function HomePage() {
         >
           <CardContent className="p-8">
             <Typography variant="h4" className="text-white font-bold mb-6 text-center">
-              Start Predict
+              Predict
             </Typography>
             <Typography variant="body1" className="text-gray-300 mb-8 text-center">
               Upload your testing data and get instant predictions using our pre-trained model
