@@ -91,56 +91,15 @@ class PCAModel(BaseExoplanetModel):
         self.training_history = metrics
         return metrics
     
-    def predict(self, X: pd.DataFrame, explain: bool = False):
-        """Predict class labels for samples in X. If explain=True, return per-sample top 5 feature names and confidence."""
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        """Make predictions."""
         if not self.is_trained:
             raise ValueError("Model must be trained before prediction")
+            
         X = self.preprocess_input(X)
         X_scaled = self.scaler.transform(X)
         X_pca = self.pca.transform(X_scaled)
-        preds = self.classifier.predict(X_pca)
-        if not explain:
-            return preds
-        proba = self.classifier.predict_proba(X_pca)
-        class_indices = [list(self.classifier.classes_).index(p) for p in preds]
-        confidences = [proba[i, idx] for i, idx in enumerate(class_indices)]
-        explanations = []
-        try:
-            import shap
-            explainer = shap.LinearExplainer(self.classifier, X_pca)
-            shap_values = explainer.shap_values(X_pca)
-            if isinstance(shap_values, list):
-                for i, idx in enumerate(class_indices):
-                    sample_shap = dict(zip([f"PC{i+1}" for i in range(X_pca.shape[1])], shap_values[idx][i]))
-                    pca_components = np.abs(self.pca.components_)
-                    orig_shap = np.dot(np.array(list(sample_shap.values())), pca_components)
-                    feature_map = dict(zip(self.feature_names, orig_shap))
-                    top5 = sorted(feature_map.items(), key=lambda x: -abs(x[1]))[:5]
-                    explanations.append([k for k, v in top5])
-            else:
-                for row in shap_values:
-                    sample_shap = dict(zip([f"PC{i+1}" for i in range(X_pca.shape[1])], row))
-                    pca_components = np.abs(self.pca.components_)
-                    orig_shap = np.dot(np.array(list(sample_shap.values())), pca_components)
-                    feature_map = dict(zip(self.feature_names, orig_shap))
-                    top5 = sorted(feature_map.items(), key=lambda x: -abs(x[1]))[:5]
-                    explanations.append([k for k, v in top5])
-        except Exception as e:
-            # fallback: use feature importance
-            try:
-                importances = self.get_feature_importance()
-                top5 = sorted(importances.items(), key=lambda x: -abs(x[1]))[:5]
-                explanations = [[k for k, v in top5] for _ in range(len(X_pca))]
-            except Exception:
-                explanations = [[f for f in self.feature_names[:5]] for _ in range(len(X_pca))]
-        return [
-            {
-                'label': str(preds[i]),
-                'confidence': float(confidences[i]),
-                'top_features': explanations[i]
-            }
-            for i in range(len(preds))
-        ]
+        return self.classifier.predict(X_pca)
     
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
         """Return prediction probabilities."""

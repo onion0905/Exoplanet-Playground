@@ -2,60 +2,54 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import { Button, LinearProgress, Box, Typography, Alert } from '@mui/material';
-import { pretrainedPrediction } from '../../lib/api';
+import { Button, LinearProgress, Box, Typography } from '@mui/material';
 
 function PretrainedProgressPage() {
   const navigate = useNavigate();
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState('Initializing...');
   const [isComplete, setIsComplete] = useState(false);
-  const [error, setError] = useState(null);
-  const [datasetInfo, setDatasetInfo] = useState({ dataset: 'Loading...', model: 'Pretrained Model' });
+
+  // 模擬訓練步驟
+  const trainingSteps = [
+    { step: 'Initializing...', duration: 1000 },
+    { step: 'Loading dataset...', duration: 2000 },
+    { step: 'Preprocessing data...', duration: 3000 },
+    { step: 'Training model...', duration: 4000 },
+    { step: 'Validating results...', duration: 2000 },
+    { step: 'Saving model...', duration: 1000 },
+    { step: 'Training complete!', duration: 500 }
+  ];
 
   useEffect(() => {
-    const sessionId = sessionStorage.getItem('pretrained_session_id');
+    let currentStepIndex = 0;
+    let totalDuration = 0;
     
-    if (!sessionId) {
-      setError('No prediction session found. Please start prediction first.');
-      setTimeout(() => navigate("/pretrained"), 2000);
-      return;
-    }
-
-    let pollInterval;
+    // 計算總時長
+    const totalTime = trainingSteps.reduce((acc, step) => acc + step.duration, 0);
     
-    const pollProgress = async () => {
-      try {
-        const data = await pretrainedPrediction.getProgress(sessionId);
+    const interval = setInterval(() => {
+      if (currentStepIndex < trainingSteps.length) {
+        const step = trainingSteps[currentStepIndex];
+        setCurrentStep(step.step);
         
-        setProgress(data.progress);
-        setCurrentStep(data.current_step);
+        // 更新進度
+        const stepProgress = ((currentStepIndex + 1) / trainingSteps.length) * 100;
+        setProgress(stepProgress);
         
-        if (data.status === 'completed') {
+        // 如果是最後一步，標記為完成
+        if (currentStepIndex === trainingSteps.length - 1) {
           setIsComplete(true);
-          clearInterval(pollInterval);
           setTimeout(() => {
             navigate("/pretrained/result");
-          }, 2000);
-        } else if (data.status === 'error') {
-          setError('Prediction failed. Please try again.');
-          clearInterval(pollInterval);
+          }, 2000); // 2秒後跳轉到 result 頁面
         }
-      } catch (err) {
-        console.error('Progress polling error:', err);
-        setError(err.message || 'Failed to get prediction progress');
-        clearInterval(pollInterval);
+        
+        currentStepIndex++;
       }
-    };
+    }, 1000);
 
-    pollProgress();
-    pollInterval = setInterval(pollProgress, 1000);
-
-    return () => {
-      if (pollInterval) {
-        clearInterval(pollInterval);
-      }
-    };
+    return () => clearInterval(interval);
   }, [navigate]);
 
   return (
@@ -77,12 +71,6 @@ function PretrainedProgressPage() {
             Your machine learning model is being trained on the selected dataset.
           </p>
         </div>
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 4 }}>
-            {error}
-          </Alert>
-        )}
 
         {/* 訓練狀態卡片 */}
         <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 rounded-2xl p-8 shadow-2xl mb-8">
@@ -116,13 +104,13 @@ function PretrainedProgressPage() {
           </Box>
 
           {/* 訓練信息 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
             <div className="p-4 bg-gray-700/30 rounded-xl backdrop-blur-sm border border-gray-600/30">
               <Typography variant="h6" className="text-blue-400 font-semibold mb-1">
                 Dataset
               </Typography>
               <Typography variant="body2" className="text-gray-300">
-                {datasetInfo.dataset}
+                NASA Kepler
               </Typography>
             </div>
             <div className="p-4 bg-gray-700/30 rounded-xl backdrop-blur-sm border border-gray-600/30">
@@ -130,7 +118,15 @@ function PretrainedProgressPage() {
                 Model
               </Typography>
               <Typography variant="body2" className="text-gray-300">
-                {datasetInfo.model}
+                Random Forest
+              </Typography>
+            </div>
+            <div className="p-4 bg-gray-700/30 rounded-xl backdrop-blur-sm border border-gray-600/30">
+              <Typography variant="h6" className="text-purple-400 font-semibold mb-1">
+                ETA
+              </Typography>
+              <Typography variant="body2" className="text-gray-300">
+                {isComplete ? 'Complete!' : '~2 min'}
               </Typography>
             </div>
           </div>

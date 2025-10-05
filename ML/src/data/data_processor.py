@@ -253,8 +253,7 @@ class DataProcessor:
                     test_size: float = 0.2,
                     val_size: float = 0.1,
                     random_state: int = 42,
-                    preprocessing_config: Dict[str, Any] = None,
-                    dataset_type: str = None) -> Dict[str, Any]:
+                    preprocessing_config: Dict[str, Any] = None) -> Dict[str, Any]:
         """Complete data preparation pipeline."""
         
         # Default preprocessing configuration
@@ -266,8 +265,7 @@ class DataProcessor:
             'encode_categorical': True,
             'remove_outliers': False,
             'outlier_method': 'iqr',
-            'max_missing_ratio': 0.999,  # Conservative - only exclude 100% missing columns
-            'impute_with_nasa_means': False
+            'max_missing_ratio': 0.999  # Conservative - only exclude 100% missing columns
         }
         
         if preprocessing_config:
@@ -285,12 +283,6 @@ class DataProcessor:
             max_missing_ratio=default_config['max_missing_ratio']
         )
         
-        # Impute missing values with NASA means if requested
-        if default_config.get('impute_with_nasa_means', False) and dataset_type is not None:
-            from .nasa_impute import impute_with_nasa_means
-            X = impute_with_nasa_means(X, dataset_type)
-            self.logger.info(f"Imputed missing values with NASA {dataset_type} means.")
-
         # Remove rows where target is missing
         valid_mask = ~y.isnull()
         X = X[valid_mask]

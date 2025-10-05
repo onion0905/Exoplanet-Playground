@@ -32,8 +32,8 @@ class BaseExoplanetModel(ABC):
         pass
     
     @abstractmethod
-    def predict(self, X: pd.DataFrame, explain: bool = False):
-        """Make predictions on input data. If explain=True, return per-sample explanations and confidence."""
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        """Make predictions on input data."""
         pass
     
     @abstractmethod

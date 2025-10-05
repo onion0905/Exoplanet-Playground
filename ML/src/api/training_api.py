@@ -6,10 +6,6 @@ import json
 import logging
 from datetime import datetime
 
-# Import include patterns at the top to avoid indentation errors
-from ..data.include_patterns import KEPLER_INCLUDE_PATTERNS, K2_INCLUDE_PATTERNS, TESS_INCLUDE_PATTERNS
-
-
 from ..data.data_loader import DataLoader
 from ..data.data_processor import DataProcessor
 from ..data.data_validator import DataValidator
@@ -17,49 +13,6 @@ from ..utils.model_factory import ModelFactory
 
 
 class TrainingAPI:
-
-    def predict_with_explanation(self, session_id: str, X=None):
-        """Predict with per-sample explanations and confidence. If X is None, use test set."""
-        session = self.current_session[session_id]
-        model = session['model']
-        if X is None:
-            X = session['prepared_data']['X_test']
-        return model.predict(X, explain=True)
-
-    def get_validation_confusion_matrix(self, session_id: str):
-        """Return confusion matrix for validation set, with labels ['planet', 'candidate', 'false_positive'] in that order if present."""
-        session = self.current_session[session_id]
-        prepared = session['prepared_data']
-        model = session['model']
-        if 'X_val' in prepared and prepared['X_val'] is not None:
-            from sklearn.metrics import confusion_matrix
-            y_val = prepared['y_val']
-            y_pred = model.predict(prepared['X_val'])
-            # Standard order for exoplanet classification
-            label_order = ['planet', 'candidate', 'false_positive']
-            # Only include labels present in the data
-            present_labels = [lbl for lbl in label_order if lbl in set(y_val)]
-            cm = confusion_matrix(y_val, y_pred, labels=present_labels)
-            return {'labels': present_labels, 'confusion_matrix': cm.tolist()}
-        return None
-
-    def predict_on_test(self, session_id: str):
-        """Return model predictions on test set (verdicts only)."""
-        session = self.current_session[session_id]
-        prepared = session['prepared_data']
-        model = session['model']
-        return model.predict(prepared['X_test'])
-
-    def get_feature_importances(self, session_id: str):
-        """Return feature importances as sorted list of (feature, importance) tuples."""
-        session = self.current_session[session_id]
-        model = session['model']
-        if hasattr(model, 'get_feature_importance'):
-            importances = model.get_feature_importance()
-            # importances is a dict: {feature: importance}
-            sorted_feats = sorted(importances.items(), key=lambda x: -x[1])
-            return sorted_feats
-        return None
     """API interface for training exoplanet ML models."""
     
     def __init__(self, data_dir: str = None):
@@ -78,30 +31,90 @@ class TrainingAPI:
         self.current_session = {}
         self.training_progress = {}
         
-    def start_training_session(self, session_id: str, dataset_name: str = None, label_column: str = None) -> Dict[str, Any]:
-        """Start a new training session. Optionally filter columns immediately if dataset_name is provided."""
+    def start_training_session(self, session_id: str) -> Dict[str, Any]:
+        """Start a new training session."""
         self.current_session[session_id] = {
             'created_at': datetime.now().isoformat(),
-            'status': 'initialized'
+            'status': 'initialized',
+            'model': None,
+            'data_info': None,
+            'training_config': None
         }
-        # If dataset_name and label_column are provided, filter columns immediately
-        if dataset_name and 'data' in self.current_session[session_id]:
-            dataset_name = dataset_name.lower()
-            if dataset_name == 'kepler':
-                include_columns = KEPLER_INCLUDE_PATTERNS
-            elif dataset_name == 'k2':
-                include_columns = K2_INCLUDE_PATTERNS
-            elif dataset_name == 'tess':
-                include_columns = TESS_INCLUDE_PATTERNS
+        
+        return {
+            'session_id': session_id,
+            'status': 'initialized',
+            'message': 'Training session started'
+        }
+    
+    def load_data_for_training(self, session_id: str, 
+                             data_source: str,
+                             data_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Load data for training.
+        
+        Args:
+            session_id: Training session ID
+            data_source: 'nasa' or 'user'  
+            data_config: Configuration for data loading
+        """
+        try:
+            if data_source == 'nasa':
+                # Load NASA dataset(s)
+                dataset_names = data_config.get('datasets', ['kepler'])
+                if len(dataset_names) == 1:
+                    data = self.data_loader.load_nasa_dataset(dataset_names[0])
+                else:
+                    data = self.data_loader.combine_datasets(dataset_names)
+            elif data_source == 'user':
+                # Load user-uploaded data
+                filepath = data_config.get('filepath')
+                if not filepath:
+                    raise ValueError("User data requires 'filepath' in config")
+                data = self.data_loader.load_user_dataset(filepath)
             else:
-                raise ValueError(f"Unknown dataset name: {dataset_name}")
-            if label_column and label_column not in include_columns:
-                include_columns = include_columns + [label_column]
-            data = self.current_session[session_id]['data']
-            masked_columns = [col for col in data.columns if col in include_columns]
-            self.current_session[session_id]['data'] = data[masked_columns]
-        return self.current_session[session_id]
+                raise ValueError(f"Unknown data source: {data_source}")
 
+            # --- FILTER: Only keep CONFIRMED and FALSE POSITIVE ---
+
+
+            # Validate data
+            validation_results = self.data_validator.validate_data_format(data)
+
+            # Store data info in session
+            data_info = {
+                'shape': data.shape,
+                'columns': list(data.columns),
+                'data_source': data_source,
+                'validation': validation_results,
+                'missing_values': data.isnull().sum().to_dict(),
+                'dtypes': data.dtypes.astype(str).to_dict()
+            }
+
+            self.current_session[session_id]['data'] = data
+            self.current_session[session_id]['data_info'] = data_info
+            self.current_session[session_id]['status'] = 'data_loaded'
+
+            return {
+                'session_id': session_id,
+                'status': 'success',
+                'data_info': data_info
+            }
+        except Exception as e:
+            self.logger.error(f"Error loading data for session {session_id}: {str(e)}")
+            return {
+                'session_id': session_id,
+                'status': 'error',
+                'error': str(e)
+            }
+            if target_column not in data.columns:
+                error_msg = f"Target column '{target_column}' not found in data"
+                self.logger.error(error_msg)
+                return {
+                    'session_id': session_id,
+                    'status': 'error',
+                    'error': error_msg
+                }
     
     def configure_training(self, session_id: str, 
                          training_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -125,27 +138,6 @@ class TrainingAPI:
             if 'data' not in session:
                 raise ValueError("Data must be loaded before configuring training")
             
-            # --- ENFORCE COLUMN FILTERING HERE ---
-            dataset_type = training_config.get('dataset_name') or training_config.get('dataset_type')
-            if dataset_type:
-                dataset_type = dataset_type.lower()
-                if dataset_type == 'kepler':
-                    include_columns = KEPLER_INCLUDE_PATTERNS
-                elif dataset_type == 'k2':
-                    include_columns = K2_INCLUDE_PATTERNS
-                elif dataset_type == 'tess':
-                    include_columns = TESS_INCLUDE_PATTERNS
-                else:
-                    raise ValueError(f"Unknown dataset type: {dataset_type}")
-                label_column = training_config.get('target_column')
-                if label_column and label_column not in include_columns:
-                    include_columns = include_columns + [label_column]
-                # Filter data to only allowed columns
-                data = session['data']
-                masked_columns = [col for col in data.columns if col in include_columns]
-                session['data'] = data[masked_columns]
-            # --- END COLUMN FILTERING ---
-
             # Validate target column
             target_column = training_config.get('target_column')
             if not target_column:
@@ -158,11 +150,7 @@ class TrainingAPI:
             # Get recommended features if not specified
             feature_columns = training_config.get('feature_columns')
             if feature_columns is None:
-                # Fallback for test/quick config: use dataset_type from config if data_info is missing
-                if 'data_info' in session and 'validation' in session['data_info']:
-                    dataset_type = session['data_info']['validation'].get('dataset_type')
-                else:
-                    dataset_type = training_config.get('dataset_name') or training_config.get('dataset_type')
+                dataset_type = session['data_info']['validation'].get('dataset_type')
                 feature_columns = self.data_validator.get_recommended_features(data, dataset_type)
                 self.logger.info(f"Using {len(feature_columns)} recommended features")
             # Validate feature columns are not empty
@@ -218,16 +206,12 @@ class TrainingAPI:
             # Always use a validation split if data is large enough
             n_rows = len(data)
             val_size = 0.18 if n_rows > 100 else 0.0  # Use 18% for validation if enough data
-            # Determine dataset_type for imputation
-            dataset_type = config.get('dataset_name') or config.get('dataset_type')
-            preprocessing_config = config.get('preprocessing_config', {})
             prepared_data = self.data_processor.prepare_data(
                 data=data,
                 target_column=config['target_column'],
                 feature_columns=config['feature_columns'],
                 val_size=val_size,
-                preprocessing_config=preprocessing_config,
-                dataset_type=dataset_type
+                preprocessing_config=config['preprocessing_config']
             )
             # Update progress
             self._update_training_progress(session_id, 30, 'Creating model...')
@@ -300,10 +284,9 @@ class TrainingAPI:
                 del session['data']
             if 'prepared_data' in session:
                 del session['prepared_data']
-            # Convert model to dict only when include_data=False (for API responses)
-            if 'model' in session and hasattr(session['model'], 'get_model_info'):
-                session['model'] = session['model'].get_model_info()
-        # When include_data=True, keep model object and prepared_data for predictions
+        if 'model' in session and hasattr(session['model'], 'get_model_info'):
+            session['model'] = session['model'].get_model_info()
+        # Always include prepared_data if include_data is True
         return {
             'session_id': session_id,
             'status': 'success',
@@ -366,9 +349,11 @@ class TrainingAPI:
             return {
                 'session_id': session_id,
                 'status': 'success',
-                'message': 'Model and metadata saved successfully.'
+                'model_path': save_path,
+                'metadata_path': metadata_path
             }
         except Exception as e:
+            self.logger.error(f"Error saving model for session {session_id}: {str(e)}")
             return {
                 'session_id': session_id,
                 'status': 'error',
@@ -394,35 +379,48 @@ class TrainingAPI:
             data, excluded_cols = self.data_processor.apply_nasa_api_filtering(data)
             self.logger.info(f"Applied NASA API filtering, excluded {len(excluded_cols)} columns")
         
-        # Enforce masking based on include patterns
-        dataset_name = config.get('dataset_name', '').lower()
-        label_column = config['target_column']
-        if dataset_name == 'kepler':
-            include_columns = KEPLER_INCLUDE_PATTERNS
-        elif dataset_name == 'k2':
-            include_columns = K2_INCLUDE_PATTERNS
-        elif dataset_name == 'tess':
-            include_columns = TESS_INCLUDE_PATTERNS
-        else:
-            raise ValueError(f"Unknown dataset name: {dataset_name}")
-
-        # Always keep the label column
-        if label_column not in include_columns:
-            include_columns = include_columns + [label_column]
-
-        # Drop columns not in include_columns
-        masked_columns = [col for col in data.columns if col in include_columns]
-        data = data[masked_columns]
-
-        # Check for extra columns (should be none)
-        extra_columns = [col for col in data.columns if col not in include_columns]
-        if extra_columns:
-            raise ValueError(f"Extra columns present after masking: {extra_columns}")
-
-        # Start session and store masked data, always filter at this point
-        self.start_training_session(session_id, dataset_name=dataset_name, label_column=label_column)
+        # Start session and store data
+        self.start_training_session(session_id)
         self.current_session[session_id]['data'] = data
-        # Store a minimal training_config for downstream use
-        self.current_session[session_id]['training_config'] = config.copy()
-
+        self.current_session[session_id]['data_info'] = {
+            'shape': data.shape,
+            'validation': {'dataset_type': 'auto-detected'}
+        }
+        
+        # Configure training
+        training_config = {
+            'model_type': config.get('model_type', 'random_forest'),
+            'target_column': config['target_column'],
+            'feature_columns': config.get('feature_columns'),
+            'hyperparameters': config.get('hyperparameters', {}),
+            'preprocessing_config': config.get('preprocessing_config', {})
+        }
+        
+        self.configure_training(session_id, training_config)
+        
         return session_id
+    
+    def quick_train_model(self, session_id: str, model_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Simplified method to train a model.
+        
+        Args:
+            session_id: Session ID from configure_training
+            model_config: Model configuration
+            
+        Returns:
+            Training results
+        """
+        # Update session with model config
+        if session_id not in self.current_session:
+            raise ValueError(f"Session {session_id} not found")
+        
+        session = self.current_session[session_id]
+        session['training_config']['model_type'] = model_config.get('model_type', 'random_forest')
+        
+        # Update hyperparameters, excluding non-hyperparameter keys
+        hyperparams = {k: v for k, v in model_config.items() if k != 'model_type'}
+        session['training_config']['hyperparameters'].update(hyperparams)
+        
+        # Start training
+        return self.start_training(session_id)
