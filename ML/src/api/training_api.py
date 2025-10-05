@@ -76,43 +76,7 @@ class TrainingAPI:
                 raise ValueError(f"Unknown data source: {data_source}")
 
             # --- FILTER: Only keep CONFIRMED and FALSE POSITIVE ---
-            target_column = data_config.get('target_column')
-            allowed = None
-            if not target_column:
-                # Try to guess from known datasets
-                if data_source == 'nasa':
-                    ds = dataset_names[0].lower()
-                    if ds == 'kepler':
-                        target_column = 'koi_disposition'
-                        allowed = {'CONFIRMED', 'FALSE POSITIVE'}
-                    elif ds == 'k2':
-                        target_column = 'disposition'
-                        allowed = {'CONFIRMED', 'FALSE POSITIVE'}
-                    elif ds == 'tess':
-                        target_column = 'tfopwg_disp'
-                        allowed = {'CP', 'FP'}
-                    else:
-                        target_column = data.columns[-1]
-                        allowed = None
-                else:
-                    target_column = data.columns[-1]
-                    allowed = None
-            else:
-                # If user provides, try to infer allowed
-                if target_column.lower().startswith('koi'):
-                    allowed = {'CONFIRMED', 'FALSE POSITIVE'}
-                elif target_column.lower().startswith('tfopwg'):
-                    allowed = {'CP', 'FP'}
-                elif target_column.lower() == 'disposition':
-                    allowed = {'CONFIRMED', 'FALSE POSITIVE'}
-                else:
-                    allowed = None
 
-            if target_column in data.columns and allowed:
-                before = len(data)
-                data = data[data[target_column].isin(allowed)].copy()
-                after = len(data)
-                self.logger.info(f"Filtered {before-after} rows: only {allowed} in {target_column}")
 
             # Validate data
             validation_results = self.data_validator.validate_data_format(data)
@@ -178,8 +142,9 @@ class TrainingAPI:
             target_column = training_config.get('target_column')
             if not target_column:
                 raise ValueError("target_column is required")
-
             data = session['data']
+            if target_column not in data.columns:
+                raise ValueError(f"Target column '{target_column}' not found in data columns: {list(data.columns)}")
             target_validation = self.data_validator.validate_target_column(data, target_column)
 
             # Get recommended features if not specified
@@ -238,10 +203,14 @@ class TrainingAPI:
             # Update progress
             self._update_training_progress(session_id, 10, 'Preparing data...')
             # Prepare data
+            # Always use a validation split if data is large enough
+            n_rows = len(data)
+            val_size = 0.18 if n_rows > 100 else 0.0  # Use 18% for validation if enough data
             prepared_data = self.data_processor.prepare_data(
                 data=data,
                 target_column=config['target_column'],
                 feature_columns=config['feature_columns'],
+                val_size=val_size,
                 preprocessing_config=config['preprocessing_config']
             )
             # Update progress
@@ -265,12 +234,22 @@ class TrainingAPI:
                 prepared_data['X_test'],
                 prepared_data['y_test']
             )
+            # Compute validation accuracy if validation set exists
+            val_accuracy = None
+            if 'X_val' in prepared_data and prepared_data['X_val'] is not None:
+                val_preds = model.predict(prepared_data['X_val'])
+                val_true = prepared_data['y_val']
+                if hasattr(model, 'score'):
+                    val_accuracy = model.score(prepared_data['X_val'], val_true)
+                else:
+                    val_accuracy = (val_preds == val_true).mean()
             # Store results
             session['model'] = model
             # Always retain prepared_data in the session for downstream API use
             session['prepared_data'] = prepared_data
             session['training_metrics'] = training_metrics
             session['evaluation_metrics'] = evaluation_metrics
+            session['validation_accuracy'] = val_accuracy
             session['status'] = 'completed'
             # Update progress
             self._update_training_progress(session_id, 100, 'Training completed!')
@@ -278,7 +257,8 @@ class TrainingAPI:
                 'session_id': session_id,
                 'status': 'success',
                 'training_metrics': training_metrics,
-                'evaluation_metrics': evaluation_metrics
+                'evaluation_metrics': evaluation_metrics,
+                'validation_accuracy': val_accuracy
             }
         except Exception as e:
             self.logger.error(f"Error training model for session {session_id}: {str(e)}")
