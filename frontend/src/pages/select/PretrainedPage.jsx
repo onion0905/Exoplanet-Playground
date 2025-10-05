@@ -8,8 +8,11 @@ import {
   Button,
   Card,
   CardContent,
-  Typography
+  Typography,
+  CircularProgress,
+  Alert
 } from '@mui/material';
+import { pretrainedPrediction } from '../../lib/api';
 
 function PretrainedPage() {
   const navigate = useNavigate();
@@ -19,6 +22,8 @@ function PretrainedPage() {
   const [uploadedTestFile, setUploadedTestFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [dragActiveTest, setDragActiveTest] = useState(false);
+  const [isPredicting, setIsPredicting] = useState(false);
+  const [error, setError] = useState(null);
   
   // 用戶上傳數據的格式選擇
   const [selectedTrainingFormat, setSelectedTrainingFormat] = useState('kepler');
@@ -130,8 +135,36 @@ function PretrainedPage() {
     }
   };
 
-  const handleStartPrediction = () => {
-    navigate("/pretrained/progress");
+  const handleStartPrediction = async () => {
+    setIsPredicting(true);
+    setError(null);
+
+    try {
+      const config = {
+        data_source: dataSource
+      };
+
+      if (dataSource === 'nasa') {
+        config.dataset_name = selectedDataset;
+      } else {
+        config.data_format = selectedTrainingFormat;
+        config.training_file = uploadedFile;
+      }
+
+      const response = await pretrainedPrediction.startPrediction(config);
+      
+      if (response.success) {
+        sessionStorage.setItem('pretrained_session_id', response.session_id);
+        navigate("/pretrained/progress");
+      } else {
+        setError(response.error || 'Failed to start prediction');
+        setIsPredicting(false);
+      }
+    } catch (err) {
+      console.error('Prediction error:', err);
+      setError(err.message || 'An error occurred while starting prediction');
+      setIsPredicting(false);
+    }
   };
 
   // 檢查是否可以開始預測
@@ -440,13 +473,18 @@ function PretrainedPage() {
         </div>
 
         {/* Start Prediction Button */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 4 }}>
+            {error}
+          </Alert>
+        )}
         <div className="text-center mt-8 mb-10">
           <Button
             variant="contained"
             size="large"
-            startIcon={<PlayArrowIcon />}
+            startIcon={isPredicting ? <CircularProgress size={20} color="inherit" /> : <PlayArrowIcon />}
             onClick={handleStartPrediction}
-            disabled={!canStartPrediction()}
+            disabled={!canStartPrediction() || isPredicting}
             sx={{
               backgroundColor: '#2563eb',
               '&:hover': {
@@ -461,7 +499,7 @@ function PretrainedPage() {
               fontSize: '1.125rem'
             }}
           >
-            Start Prediction!
+            {isPredicting ? 'Starting Prediction...' : 'Start Prediction!'}
           </Button>
         </div>
 

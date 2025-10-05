@@ -66,7 +66,9 @@ class MLIntegration:
                 'target_column': self.target_columns.get(dataset_name, 'koi_disposition'),
                 'hyperparameters': config.get('hyperparameters', {})
             }
-            self.training_api.configure_training(session_id, training_config)
+            config_result = self.training_api.configure_training(session_id, training_config)
+            if config_result['status'] != 'success':
+                raise ValueError(f"Configuration failed: {config_result.get('error', 'Unknown error')}")
             
             # 4. Start training
             result = self.training_api.start_training(session_id)

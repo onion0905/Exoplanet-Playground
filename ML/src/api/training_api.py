@@ -107,14 +107,6 @@ class TrainingAPI:
                 'status': 'error',
                 'error': str(e)
             }
-            if target_column not in data.columns:
-                error_msg = f"Target column '{target_column}' not found in data"
-                self.logger.error(error_msg)
-                return {
-                    'session_id': session_id,
-                    'status': 'error',
-                    'error': error_msg
-                }
     
     def configure_training(self, session_id: str, 
                          training_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -284,9 +276,10 @@ class TrainingAPI:
                 del session['data']
             if 'prepared_data' in session:
                 del session['prepared_data']
-        if 'model' in session and hasattr(session['model'], 'get_model_info'):
-            session['model'] = session['model'].get_model_info()
-        # Always include prepared_data if include_data is True
+            # Convert model to dict only when include_data=False (for API responses)
+            if 'model' in session and hasattr(session['model'], 'get_model_info'):
+                session['model'] = session['model'].get_model_info()
+        # When include_data=True, keep model object and prepared_data for predictions
         return {
             'session_id': session_id,
             'status': 'success',

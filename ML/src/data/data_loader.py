@@ -21,9 +21,9 @@ class DataLoader:
     def load_nasa_dataset(self, dataset_name: str) -> pd.DataFrame:
         """Load a NASA dataset by name."""
         dataset_files = {
-            'kepler': 'kepler_objects_of_interest.csv',
-            'tess': 'tess_objects_of_interest.csv',
-            'k2': 'k2_planets_and_candidates.csv'
+            'kepler': 'kepler_raw.csv',
+            'tess': 'tess_raw.csv',
+            'k2': 'k2_raw.csv'
         }
         
         if dataset_name not in dataset_files:
