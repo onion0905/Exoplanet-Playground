@@ -1,9 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import { Button } from '@mui/material';
-
 function AboutPage() {
   const navigate = useNavigate();
 

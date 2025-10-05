@@ -277,7 +277,7 @@ function PretrainedPage() {
                   <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center mr-3">
                     <span className="text-green-400 text-lg">📁</span>
                   </div>
-                  <h3 className="text-white text-xl font-semibold">Upload Your Data to Fine-tune Our Model</h3>
+                  <h3 className="text-white text-xl font-semibold">Upload Your Data</h3>
                 </div>
                 
                 {/* Grid layout for training and testing data */}

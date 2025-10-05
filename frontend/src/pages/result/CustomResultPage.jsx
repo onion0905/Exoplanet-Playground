@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
+import ExoplanetVisualization from "../../components/ExoplanetVisualization";
+import StarVisualization from "../../components/StarVisualization";
 import { 
   Button, 
   Table, 
@@ -294,19 +296,18 @@ function CustomResultPage() {
                           </Box>
                         </TableCell>
                         <TableCell>
-                          {planet.isPositive && (
-                            <IconButton
-                              onClick={() => handleView3D(planet)}
-                              sx={{
-                                color: '#60a5fa',
-                                '&:hover': {
-                                  backgroundColor: 'rgba(96, 165, 250, 0.1)'
-                                }
-                              }}
-                            >
-                              <VisibilityIcon />
-                            </IconButton>
-                          )}
+                          <IconButton
+                            onClick={() => handleView3D(planet)}
+                            sx={{
+                              color: '#60a5fa',
+                              '&:hover': {
+                                backgroundColor: 'rgba(96, 165, 250, 0.1)'
+                              }
+                            }}
+                          >
+                            <VisibilityIcon />
+                          </IconButton>
+
                         </TableCell>
                         <TableCell>
                           <IconButton
@@ -388,21 +389,12 @@ function CustomResultPage() {
           3D Visualization - {selectedPlanet?.name}
         </DialogTitle>
         <DialogContent>
-          <div className="h-96 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-lg flex items-center justify-center border border-gray-600/30">
-            <div className="text-center">
-              <div className="w-32 h-32 mx-auto mb-4 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full flex items-center justify-center">
-                <span className="text-6xl">🌍</span>
-              </div>
-              <Typography variant="h6" className="text-white mb-2">
-                3D Planet Visualization
-              </Typography>
-              <Typography variant="body2" className="text-gray-300">
-                Interactive 3D model of {selectedPlanet?.name}
-              </Typography>
-              <Typography variant="body2" className="text-gray-400 mt-2">
-                (This would be a real 3D visualization in production)
-              </Typography>
-            </div>
+          <div className="h-96 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-lg border border-gray-600/30 overflow-hidden">
+            {selectedPlanet?.isPositive ? (
+              <ExoplanetVisualization width={800} height={384} />
+            ) : (
+              <StarVisualization width={800} height={384} temperature={selectedPlanet?.temperature || 40000} />
+            )}
           </div>
         </DialogContent>
         <DialogActions>
