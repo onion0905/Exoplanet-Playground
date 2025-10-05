@@ -134,9 +134,9 @@ function CustomResultPage() {
 
   // 混淆矩陣數據
   const confusionMatrixData = [
-    [128, 7, 9],   // Not-Exoplanet: 128正確, 7被誤判為Candidate, 9被誤判為Exoplanet
-    [8, 52, 6],    // Candidate: 8被誤判為Not-Exoplanet, 52正確, 6被誤判為Exoplanet
-    [6, 10, 157]   // Exoplanet: 6被誤判為Not-Exoplanet, 10被誤判為Candidate, 157正確
+    [140, 2, 1],   // Not-Exoplanet: 140正確, 2被誤判為Candidate, 1被誤判為Exoplanet
+    [1, 58, 1],    // Candidate: 1被誤判為Not-Exoplanet, 58正確, 1被誤判為Exoplanet
+    [1, 2, 170]    // Exoplanet: 1被誤判為Not-Exoplanet, 2被誤判為Candidate, 170正確
   ];
 
   const handleExpandRow = (planetId) => {
