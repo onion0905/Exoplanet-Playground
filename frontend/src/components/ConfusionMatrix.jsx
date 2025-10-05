@@ -16,6 +16,7 @@ export default function ConfusionMatrix({
   labels = ["Not-Exoplanet", "Candidate", "Exoplanet"],
   title = "Exoplanet Classification — 3-Class Confusion Matrix",
   className = "",
+  resultCounts = null, // 新增：結果數量數據
 }) {
   // ---- basic guards ---------------------------------------------------------
   const n = 3;
@@ -57,9 +58,9 @@ export default function ConfusionMatrix({
 
   const cellBg = (i, j) => {
     // 對角線：正確→綠；中心 candidate：琥珀色；其餘：紅
-    if (i === j) return "bg-emerald-500/10";
-    if (i === 1 && j === 1) return "bg-amber-400/10";
-    return "bg-rose-500/10";
+    if (i === j) return "bg-emerald-500/5";
+    if (i === 1 && j === 1) return "bg-amber-400/5";
+    return "bg-rose-500/5";
   };
   const cellTag = (i, j) => {
     if (i === j && i === 0) return { tag: "TN", cls: "text-emerald-300/90" };
@@ -202,20 +203,35 @@ export default function ConfusionMatrix({
           </div>
 
           <div className="bg-slate-900/40 rounded-2xl p-6 neon">
-            <h3 className="text-sm font-medium tracking-wide mb-4">Per-Class (Precision / Recall / F1)</h3>
-            <div className="grid gap-3">
-              {perClass.map((m, i) => (
-                <div key={i} className="rounded-xl bg-slate-800/60 p-4">
-                  <div className="text-xs text-slate-400 mb-1">{labels[i]}</div>
-                  <div className="text-lg">
-                    {fmt(m.precision)} / {fmt(m.recall)} / {fmt(m.f1)}
+            <h3 className="text-sm font-medium tracking-wide mb-4">
+              {resultCounts ? "Prediction Results" : "Per-Class (Precision / Recall / F1)"}
+            </h3>
+            {resultCounts ? (
+              <div className="grid gap-3">
+                {resultCounts.map((count, i) => (
+                  <div key={i} className="rounded-xl bg-slate-800/60 p-4">
+                    <div className="text-xs text-slate-400 mb-1">{labels[i]}</div>
+                    <div className="text-2xl font-semibold text-slate-200">{count}</div>
                   </div>
-                </div>
-              ))}
-            </div>
-            <p className="mt-3 text-xs text-slate-400">
-              格式：Precision / Recall / F1（四捨五入到小數點二位）
-            </p>
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {perClass.map((m, i) => (
+                  <div key={i} className="rounded-xl bg-slate-800/60 p-4">
+                    <div className="text-xs text-slate-400 mb-1">{labels[i]}</div>
+                    <div className="text-lg">
+                      {fmt(m.precision)} / {fmt(m.recall)} / {fmt(m.f1)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!resultCounts && (
+              <p className="mt-3 text-xs text-slate-400">
+                格式：Precision / Recall / F1（四捨五入到小數點二位）
+              </p>
+            )}
           </div>
         </aside>
       </main>

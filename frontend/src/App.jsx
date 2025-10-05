@@ -24,11 +24,11 @@ function App() {
           <Route path="/learn_exo" element={<LearnExoPage />} />
           <Route path="/learn_ml" element={<LearnMLPage />} />
           <Route path="/custom" element={<CustomPage />} />
-          <Route path="/custom/progress" element={<CustomProgressPage />} />
-          <Route path="/custom/result" element={<CustomResultPage />} />
+          <Route path="/custom_progress" element={<CustomProgressPage />} />
+          <Route path="/custom_result" element={<CustomResultPage />} />
           <Route path="/pretrained" element={<PretrainedPage />} />
-          <Route path="/pretrained/progress" element={<PretrainedProgressPage />} />
-          <Route path="/pretrained/result" element={<PretrainedResultPage />} />
+          <Route path="/pretrained_progress" element={<PretrainedProgressPage />} />
+          <Route path="/pretrained_result" element={<PretrainedResultPage />} />
         </Routes>
       </Router>
     </ThemeProvider>

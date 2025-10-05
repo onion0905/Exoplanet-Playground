@@ -1,6 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
+import CSSBackgroundVisualization from "../../components/CSSBackgroundVisualization";
+import SimpleTrailCursor from "../../components/SimpleTrailCursor";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { Button } from '@mui/material';
 
@@ -8,13 +10,9 @@ function LearnPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="relative w-full min-h-screen bg-[#14171e] overflow-hidden">
-      <img
-        className="absolute top-20 left-0 w-full h-[calc(100vh-5rem)] object-cover"
-        alt="Space background"
-        src="/background.svg"
-      />
-
+    <div className="relative w-full min-h-screen">
+      <CSSBackgroundVisualization />
+      <SimpleTrailCursor />
       <Navbar />
 
       <main className="relative z-10 px-8 pt-32 max-w-6xl mx-auto">

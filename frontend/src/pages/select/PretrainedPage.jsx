@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
+import CSSBackgroundVisualization from "../../components/CSSBackgroundVisualization";
+import SimpleTrailCursor from "../../components/SimpleTrailCursor";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -22,6 +24,8 @@ function PretrainedPage() {
   
   // 用戶上傳數據的格式選擇
   const [selectedTrainingFormat, setSelectedTrainingFormat] = useState('kepler');
+  const [selectedTestingFormat, setSelectedTestingFormat] = useState('kepler');
+  const [showTestingFormatSelection, setShowTestingFormatSelection] = useState(false);
 
   const datasets = [
     {
@@ -131,7 +135,7 @@ function PretrainedPage() {
   };
 
   const handleStartPrediction = () => {
-    navigate("/pretrained/progress");
+    navigate("/pretrained_progress");
   };
 
   // 檢查是否可以開始預測
@@ -139,18 +143,14 @@ function PretrainedPage() {
     if (dataSource === 'nasa') {
       return selectedDataset !== '';
     } else {
-      return uploadedFile !== null;
+      return uploadedFile !== null && uploadedTestFile !== null;
     }
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-[#14171e] overflow-hidden">
-      <img
-        className="absolute top-20 left-0 w-full h-[calc(100vh-5rem)] object-cover"
-        alt="Space background"
-        src="/background.svg"
-      />
-
+    <div className="relative w-full min-h-screen">
+      <CSSBackgroundVisualization />
+      <SimpleTrailCursor />
       <Navbar />
 
       <main className="relative z-10 px-[3.375rem] pt-32 max-w-6xl mx-auto">
@@ -231,7 +231,7 @@ function PretrainedPage() {
 
             {/* NASA Dataset Selection */}
             {dataSource === 'nasa' && (
-              <div className="p-8 rounded-2xl bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 shadow-2xl">
+              <div className="p-8 rounded-2xl bg-transparent backdrop-blur-sm border border-gray-600/30 shadow-2xl">
                 <div className="flex items-center mb-6">
                   <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center mr-3">
                     <span className="text-blue-400 text-lg">🛰️</span>
@@ -251,6 +251,7 @@ function PretrainedPage() {
                         onClick={() => handleDatasetSelect(dataset.id)}
                         sx={{
                           cursor: 'pointer',
+                          backgroundColor: 'rgba(0, 0, 0, 0.1)',
                           backdropFilter: 'blur(10px)',
                           border: selectedDataset === dataset.id 
                             ? '3px solid #60a5fa' 
@@ -286,7 +287,7 @@ function PretrainedPage() {
 
             {/* User Data Upload */}
             {dataSource === 'user' && (
-              <div className="p-8 rounded-2xl bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 shadow-2xl">
+              <div className="p-8 rounded-2xl bg-transparent backdrop-blur-sm border border-gray-600/30 shadow-2xl">
                 <div className="flex items-center mb-6">
                   <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center mr-3">
                     <span className="text-green-400 text-lg">📁</span>
@@ -348,7 +349,8 @@ function PretrainedPage() {
                   </div>
                 </div>
                 
-                {/* Training Data Upload Only */}
+                {/* Grid layout for training and testing data */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Training Data Upload */}
                   <div className="space-y-2">
                     <h4 className="text-white text-lg font-medium mb-4">Training Data</h4>
@@ -430,9 +432,169 @@ function PretrainedPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Testing Data Upload */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-white text-lg font-medium">Testing Data</h4>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => setShowTestingFormatSelection(!showTestingFormatSelection)}
+                        sx={{
+                          color: 'white',
+                          borderColor: 'rgba(255, 255, 255, 0.3)',
+                          fontSize: '0.75rem',
+                          '&:hover': {
+                            borderColor: 'rgba(255, 255, 255, 0.5)',
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                          }
+                        }}
+                      >
+                        {showTestingFormatSelection ? 'Hide Format' : 'Select Format'}
+                      </Button>
+                    </div>
+                    
+                    {/* Testing Data Format Selection */}
+                    {showTestingFormatSelection && (
+                      <div className="mb-4 p-4 bg-gray-700/20 rounded-lg border border-gray-600/30">
+                        <h5 className="text-white text-sm font-medium mb-3">Select Testing Data Format</h5>
+                        <div className="grid grid-cols-1 gap-2">
+                          {datasets.map((dataset) => (
+                            <div 
+                              key={dataset.id} 
+                              className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
+                                selectedTestingFormat === dataset.id
+                                  ? 'bg-purple-500/20 border-purple-500'
+                                  : 'bg-gray-600/30 border-gray-500/30 hover:bg-gray-500/40'
+                              }`}
+                              onClick={() => setSelectedTestingFormat(dataset.id)}
+                            >
+                              <div className="flex items-center">
+                                <div className={`w-3 h-3 rounded-full border-2 mr-2 ${
+                                  selectedTestingFormat === dataset.id
+                                    ? 'border-purple-500 bg-purple-500'
+                                    : 'border-gray-400'
+                                }`}>
+                                  {selectedTestingFormat === dataset.id && (
+                                    <div className="w-1 h-1 bg-white rounded-full m-0.5"></div>
+                                  )}
+                                </div>
+                                <div className="w-6 h-6 rounded mr-2" style={{ backgroundColor: dataset.color + '20' }}>
+                                  <img src={dataset.img} alt={dataset.name} className="w-full h-full object-cover rounded" />
+                                </div>
+                                <span className="text-white text-sm font-medium">{dataset.name}</span>
+                              </div>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<DownloadIcon />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownloadSample(dataset.id, 'testing');
+                                }}
+                                sx={{
+                                  color: 'white',
+                                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                                  fontSize: '0.65rem',
+                                  minWidth: 'auto',
+                                  px: 1,
+                                  py: 0.5,
+                                  '&:hover': {
+                                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                                  }
+                                }}
+                              >
+                                Sample
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div
+                      className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 backdrop-blur-sm ${
+                        dragActiveTest 
+                          ? 'border-purple-400 bg-gradient-to-br from-purple-500/20 to-purple-600/10 shadow-lg shadow-purple-500/20' 
+                          : 'border-gray-500/50 bg-gradient-to-br from-gray-700/30 to-gray-800/30 hover:border-gray-400 hover:bg-gradient-to-br hover:from-gray-600/40 hover:to-gray-700/40'
+                      }`}
+                      onDragEnter={handleTestDrag}
+                      onDragLeave={handleTestDrag}
+                      onDragOver={handleTestDrag}
+                      onDrop={handleTestDrop}
+                    >
+                      <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-gray-600/50 to-gray-700/50 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-gray-500/30">
+                        <CloudUploadIcon className="text-2xl text-gray-300" />
+                      </div>
+                      <p className="text-white mb-3 text-base font-medium">Testing CSV</p>
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleTestFileUpload}
+                        className="hidden"
+                        id="testing-file-upload"
+                      />
+                      <label htmlFor="testing-file-upload">
+                        <Button
+                          variant="outlined"
+                          component="span"
+                          size="small"
+                          sx={{
+                            color: 'white',
+                            borderColor: 'rgba(255, 255, 255, 0.3)',
+                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            backdropFilter: 'blur(10px)',
+                            px: 3,
+                            py: 1,
+                            fontSize: '0.875rem',
+                            fontWeight: 500,
+                            borderRadius: '10px',
+                            '&:hover': {
+                              borderColor: 'rgba(255, 255, 255, 0.5)',
+                              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                              transform: 'translateY(-1px)',
+                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+                            }
+                          }}
+                        >
+                          Choose File
+                        </Button>
+                      </label>
+                      {uploadedTestFile && (
+                        <div className="mt-4 p-3 bg-gradient-to-r from-purple-500/20 to-purple-600/20 border border-purple-400/30 rounded-xl backdrop-blur-sm">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <div className="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center mr-2">
+                                <span className="text-white text-xs">✓</span>
+                              </div>
+                              <span className="text-purple-200 text-sm font-medium">{uploadedTestFile.name}</span>
+                            </div>
+                            <Button
+                              size="small"
+                              onClick={() => setUploadedTestFile(null)}
+                              sx={{
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                minWidth: 'auto',
+                                padding: '2px 6px',
+                                fontSize: '0.75rem',
+                                '&:hover': {
+                                  color: 'white',
+                                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                                }
+                              }}
+                            >
+                              ✕
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
                 
                 <p className="text-gray-400 text-sm mt-6 text-center">
-                  Supported format: CSV files with exoplanet data for fine-tuning.
+                  Supported format: CSV files with exoplanet data. Both training and testing data are required.
                 </p>
               </div>
             )}

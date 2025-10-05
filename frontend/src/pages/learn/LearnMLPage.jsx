@@ -1,6 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
+import CSSBackgroundVisualization from "../../components/CSSBackgroundVisualization";
+import SimpleTrailCursor from "../../components/SimpleTrailCursor";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { Button } from '@mui/material';
 
@@ -8,13 +10,9 @@ function LearnMLPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="relative w-full min-h-screen bg-[#14171e] overflow-hidden">
-      <img
-        className="absolute top-20 left-0 w-full h-[calc(100vh-5rem)] object-cover"
-        alt="Space background"
-        src="/background.svg"
-      />
-
+    <div className="relative w-full min-h-screen">
+      <CSSBackgroundVisualization />
+      <SimpleTrailCursor />
       <Navbar />
 
       <main className="relative z-10 px-8 pt-32 max-w-6xl mx-auto">
@@ -28,7 +26,7 @@ function LearnMLPage() {
             {/* Brief introduction of machine learning */}
             <section className="mb-12">
               <h2 className="font-bold text-white text-3xl mb-6">Brief introduction of machine learning</h2>
-              <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
+              <div className="bg-transparent backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
                 <p className="text-white text-lg leading-relaxed mb-4">
                   Artificial Intelligence (AI) refers to any system or software capable of learning, reasoning, or
                   performing tasks in ways that appear intelligent. Machine Learning (ML) is a key branch of AI
@@ -45,7 +43,7 @@ function LearnMLPage() {
               <h2 className="font-bold text-white text-3xl mb-6">Introduction of the model we used</h2>
 
               {/* 1. Decision Tree */}
-              <div className="mb-8 bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
+              <div className="mb-8 bg-transparent backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
                 <div className="flex items-start gap-6">
                   <div className="flex-grow">
                     <h3 className="font-bold text-white text-2xl mb-3">1. Decision Tree</h3>
@@ -79,7 +77,7 @@ function LearnMLPage() {
               </div>
 
               {/* 2. Random Forest */}
-              <div className="mb-8 bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
+              <div className="mb-8 bg-transparent backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
                 <div className="flex items-start gap-6">
                   <div className="flex-grow">
                     <h3 className="font-bold text-white text-2xl mb-3">2. Random Forest</h3>
@@ -113,7 +111,7 @@ function LearnMLPage() {
               </div>
 
               {/* 3. Linear Regression */}
-              <div className="mb-8 bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
+              <div className="mb-8 bg-transparent backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
                 <div className="flex items-start gap-6">
                   <div className="flex-grow">
                     <h3 className="font-bold text-white text-2xl mb-3">3. Linear Regression</h3>
@@ -138,7 +136,7 @@ function LearnMLPage() {
               </div>
 
               {/* 4. Principal Component Analysis (PCA) */}
-              <div className="mb-8 bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
+              <div className="mb-8 bg-transparent backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
                 <div className="flex items-start gap-6">
                   <div className="flex-grow">
                     <h3 className="font-bold text-white text-2xl mb-3">4. Principal Component Analysis (PCA)</h3>
@@ -165,7 +163,7 @@ function LearnMLPage() {
               </div>
 
               {/* 5. Support Vector Machine (SVM) */}
-              <div className="mb-8 bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
+              <div className="mb-8 bg-transparent backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
                 <div className="flex items-start gap-6">
                   <div className="flex-grow">
                     <h3 className="font-bold text-white text-2xl mb-3">5. Support Vector Machine (SVM)</h3>
@@ -195,7 +193,7 @@ function LearnMLPage() {
               </div>
 
               {/* 6. Neural Network */}
-              <div className="mb-8 bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
+              <div className="mb-8 bg-transparent backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
                 <div className="flex items-start gap-6">
                   <div className="flex-grow">
                     <h3 className="font-bold text-white text-2xl mb-3">6. Neural Network</h3>
@@ -229,7 +227,7 @@ function LearnMLPage() {
             <section className="mb-12">
               <h2 className="font-bold text-white text-3xl mb-6">AI Astrobiology Exoplanetary Science Literature Review</h2>
               
-              <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
+              <div className="bg-transparent backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
                 <div className="mb-6">
                   <h3 className="font-bold text-white text-2xl mb-3">2023:</h3>
                   <ul className="list-lisc list-inside ml-4 text-gray-300 space-y-4">
@@ -307,7 +305,7 @@ function LearnMLPage() {
             {/* Reference */}
             <section className="mb-12">
               <h2 className="font-bold text-white text-3xl mb-6">Reference:</h2>
-              <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
+              <div className="bg-transparent backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 shadow-2xl">
                 <ul className="list-disc list-inside ml-4 text-gray-300 space-y-2">
                   <li>
                     <a href="https://www.nasa.gov/space-science-and-astrobiology-at-ames/research-teams/ai-astrobiology/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">

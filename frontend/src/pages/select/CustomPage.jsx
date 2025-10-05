@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
+import CSSBackgroundVisualization from "../../components/CSSBackgroundVisualization";
+import SimpleTrailCursor from "../../components/SimpleTrailCursor";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -227,13 +229,9 @@ function CustomPage() {
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-[#14171e] overflow-hidden">
-      <img
-        className="absolute top-20 left-0 w-full h-[calc(100vh-5rem)] object-cover"
-        alt="Space background"
-        src="/background.svg"
-      />
-
+    <div className="relative w-full min-h-screen">
+      <CSSBackgroundVisualization />
+      <SimpleTrailCursor />
       <Navbar />
 
       <main className="relative z-10 px-[3.375rem] pt-32 max-w-6xl mx-auto">
@@ -370,7 +368,7 @@ function CustomPage() {
 
               {/* NASA Dataset Selection */}
               {dataSource === 'nasa' && (
-                <div className="p-8 rounded-2xl bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 shadow-2xl">
+                <div className="p-8 rounded-2xl bg-transparent backdrop-blur-sm border border-gray-600/30 shadow-2xl">
                   <div className="flex items-center mb-6">
                     <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center mr-3">
                       <span className="text-blue-400 text-lg">🛰️</span>
@@ -390,6 +388,7 @@ function CustomPage() {
                           onClick={() => handleDatasetSelect(dataset.id)}
                           sx={{
                             cursor: 'pointer',
+                            backgroundColor: 'rgba(0, 0, 0, 0.1)',
                             backdropFilter: 'blur(10px)',
                             border: selectedDataset === dataset.id 
                               ? '3px solid #60a5fa' 
@@ -426,7 +425,7 @@ function CustomPage() {
 
               {/* User Data Upload */}
               {dataSource === 'user' && (
-                <div className="p-8 rounded-2xl bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 shadow-2xl">
+                <div className="p-8 rounded-2xl bg-transparent backdrop-blur-sm border border-gray-600/30 shadow-2xl">
                   <div className="flex items-center mb-6">
                     <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center mr-3">
                       <span className="text-green-400 text-lg">📁</span>
@@ -883,7 +882,7 @@ function CustomPage() {
                 variant="contained"
                 size="large"
                 startIcon={<PlayArrowIcon />}
-                onClick={() => navigate("/custom/progress")}
+                onClick={() => navigate("/custom_progress")}
                 disabled={!isTrainingReady}
                 sx={{
                   backgroundColor: '#2563eb',

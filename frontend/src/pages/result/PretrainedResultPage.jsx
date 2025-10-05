@@ -4,6 +4,8 @@ import Navbar from "../../components/Navbar";
 import ExoplanetVisualization from "../../components/ExoplanetVisualization";
 import StarVisualization from "../../components/StarVisualization";
 import ConfusionMatrix from "../../components/ConfusionMatrix";
+import CSSBackgroundVisualization from "../../components/CSSBackgroundVisualization";
+import SimpleTrailCursor from "../../components/SimpleTrailCursor";
 import { 
   Button, 
   Table, 
@@ -193,13 +195,9 @@ function PretrainedResultPage() {
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-[#14171e] overflow-hidden">
-      <img
-        className="absolute top-20 left-0 w-full h-[calc(100vh-5rem)] object-cover"
-        alt="Space background"
-        src="/background.svg"
-      />
-
+    <div className="relative w-full min-h-screen">
+      <CSSBackgroundVisualization />
+      <SimpleTrailCursor />
       <Navbar />
 
       <main className="relative z-10 px-[3.375rem] pt-32 max-w-7xl mx-auto">
@@ -212,9 +210,53 @@ function PretrainedResultPage() {
           </p>
         </div>
 
-        {/* 結果統計卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gradient-to-br from-green-800/60 to-green-900/60 backdrop-blur-sm border border-green-600/30">
+        {/* Confusion Matrix - 移到最上方 */}
+        <Card 
+          sx={{
+            backgroundColor: 'rgba(0, 0, 0, 0.1)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(107, 114, 128, 0.3)',
+            borderRadius: '16px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          }}
+          className="mb-8"
+        >
+          <CardContent className="p-0">
+            <div className="p-6 border-b border-gray-600/30">
+              <Typography variant="h5" className="text-white font-semibold">
+                Model Performance Analysis
+              </Typography>
+              <Typography variant="body2" className="text-gray-400 mt-2">
+                Confusion Matrix showing classification accuracy across all three categories
+              </Typography>
+            </div>
+            <div className="p-6">
+              <ConfusionMatrix 
+                data={confusionMatrixData}
+                labels={["Not-Exoplanet", "Candidate", "Exoplanet"]}
+                title="Pretrained Model Performance"
+                className="min-h-0"
+                resultCounts={[
+                  predictionResults.filter(p => p.prediction === 'Not-Exoplanet').length,
+                  predictionResults.filter(p => p.prediction === 'Candidate').length,
+                  predictionResults.filter(p => p.prediction === 'Exoplanet').length
+                ]}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 結果統計卡片 - 三種結果數量 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card 
+            sx={{
+              backgroundColor: 'rgba(0, 0, 0, 0.1)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(34, 197, 94, 0.3)',
+              borderRadius: '16px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+            }}
+          >
             <CardContent className="text-center p-6">
               <Typography variant="h4" className="text-green-400 font-bold mb-2">
                 {predictionResults.filter(p => p.prediction === 'Exoplanet').length}
@@ -225,7 +267,15 @@ function PretrainedResultPage() {
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-br from-amber-800/60 to-amber-900/60 backdrop-blur-sm border border-amber-600/30">
+          <Card 
+            sx={{
+              backgroundColor: 'rgba(0, 0, 0, 0.1)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              borderRadius: '16px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+            }}
+          >
             <CardContent className="text-center p-6">
               <Typography variant="h4" className="text-amber-400 font-bold mb-2">
                 {predictionResults.filter(p => p.prediction === 'Candidate').length}
@@ -236,7 +286,15 @@ function PretrainedResultPage() {
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-br from-red-800/60 to-red-900/60 backdrop-blur-sm border border-red-600/30">
+          <Card 
+            sx={{
+              backgroundColor: 'rgba(0, 0, 0, 0.1)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '16px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+            }}
+          >
             <CardContent className="text-center p-6">
               <Typography variant="h4" className="text-red-400 font-bold mb-2">
                 {predictionResults.filter(p => p.prediction === 'Not-Exoplanet').length}
@@ -246,21 +304,19 @@ function PretrainedResultPage() {
               </Typography>
             </CardContent>
           </Card>
-          
-          <Card className="bg-gradient-to-br from-blue-800/60 to-blue-900/60 backdrop-blur-sm border border-blue-600/30">
-            <CardContent className="text-center p-6">
-              <Typography variant="h4" className="text-blue-400 font-bold mb-2">
-                {(predictionResults.reduce((acc, p) => acc + p.confidence, 0) / predictionResults.length * 100).toFixed(1)}%
-              </Typography>
-              <Typography variant="body1" className="text-white">
-                Avg Confidence
-              </Typography>
-            </CardContent>
-          </Card>
         </div>
 
         {/* 預測結果表格 */}
-        <Card className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 shadow-2xl mb-8">
+        <Card 
+          sx={{
+            backgroundColor: 'rgba(0, 0, 0, 0.1)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(107, 114, 128, 0.3)',
+            borderRadius: '16px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          }}
+          className="mb-8"
+        >
           <CardContent className="p-0">
             <div className="p-6 border-b border-gray-600/30">
               <div className="flex items-center justify-between">
@@ -271,7 +327,7 @@ function PretrainedResultPage() {
                   <Button
                     variant="outlined"
                     startIcon={<AddIcon />}
-                    onClick={() => navigate("/select")}
+                    onClick={() => navigate("/pretrained")}
                     sx={{
                       color: 'white',
                       borderColor: 'rgba(255, 255, 255, 0.3)',
@@ -281,7 +337,7 @@ function PretrainedResultPage() {
                       }
                     }}
                   >
-                    Train New Model
+                    New Prediction
                   </Button>
                   <Button
                     variant="contained"
@@ -300,13 +356,14 @@ function PretrainedResultPage() {
               </div>
             </div>
             
-            <TableContainer>
-              <Table>
+            <TableContainer sx={{ maxHeight: 400 }} className="table-scrollbar">
+              <Table stickyHeader>
                 <TableHead>
                   <TableRow className="bg-gray-700/30">
                     <TableCell className="text-white font-semibold">Planet Name</TableCell>
                     <TableCell className="text-white font-semibold">Prediction</TableCell>
                     <TableCell className="text-white font-semibold">Confidence</TableCell>
+                    <TableCell className="text-white font-semibold">Temperature (K)</TableCell>
                     <TableCell className="text-white font-semibold">3D View</TableCell>
                     <TableCell className="text-white font-semibold">Details</TableCell>
                   </TableRow>
@@ -348,6 +405,9 @@ function PretrainedResultPage() {
                               {(planet.confidence * 100).toFixed(1)}%
                             </Typography>
                           </Box>
+                        </TableCell>
+                        <TableCell className="text-white">
+                          {planet.temperature || Math.floor(Math.random() * 3000) + 2000}K
                         </TableCell>
                         <TableCell>
                           <IconButton
@@ -400,27 +460,6 @@ function PretrainedResultPage() {
           </CardContent>
         </Card>
 
-        {/* Confusion Matrix */}
-        <Card className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 shadow-2xl mb-8">
-          <CardContent className="p-0">
-            <div className="p-6 border-b border-gray-600/30">
-              <Typography variant="h5" className="text-white font-semibold">
-                Model Performance Analysis
-              </Typography>
-              <Typography variant="body2" className="text-gray-400 mt-2">
-                Confusion Matrix showing classification accuracy across all three categories
-              </Typography>
-            </div>
-            <div className="p-6">
-              <ConfusionMatrix 
-                data={confusionMatrixData}
-                labels={["Not-Exoplanet", "Candidate", "Exoplanet"]}
-                title="Pretrained Model Performance"
-                className="min-h-0"
-              />
-            </div>
-          </CardContent>
-        </Card>
 
         {/* 底部操作按鈕 */}
         <div className="flex justify-center gap-6 mb-10">

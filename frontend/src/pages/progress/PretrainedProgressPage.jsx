@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
+import CSSBackgroundVisualization from "../../components/CSSBackgroundVisualization";
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { Button, LinearProgress, Box, Typography } from '@mui/material';
 
@@ -41,7 +42,7 @@ function PretrainedProgressPage() {
         if (currentStepIndex === trainingSteps.length - 1) {
           setIsComplete(true);
           setTimeout(() => {
-            navigate("/pretrained/result");
+            navigate("/pretrained_result");
           }, 2000); // 2秒後跳轉到 result 頁面
         }
         
@@ -53,13 +54,8 @@ function PretrainedProgressPage() {
   }, [navigate]);
 
   return (
-    <div className="relative w-full min-h-screen bg-[#14171e] overflow-hidden">
-      <img
-        className="absolute top-20 left-0 w-full h-[calc(100vh-5rem)] object-cover"
-        alt="Space background"
-        src="/background.svg"
-      />
-
+    <div className="relative w-full min-h-screen">
+      <CSSBackgroundVisualization />
       <Navbar />
 
       <main className="relative z-10 px-[3.375rem] pt-32 max-w-4xl mx-auto">
