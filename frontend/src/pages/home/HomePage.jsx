@@ -6,12 +6,6 @@ import PsychologyIcon from '@mui/icons-material/Psychology';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { Button } from '@mui/material';
 
-const actionButtons = [
-  { label: "Learn about Exoplanet", path: "/learn", icon: TravelExploreIcon },
-  { label: "Learn about ML", path: "/learn", icon: PsychologyIcon },
-  { label: "Launch the model", path: "/select", icon: PlayArrowIcon},
-];
-
 function HomePage() {
   const navigate = useNavigate();
 
@@ -46,7 +40,8 @@ function HomePage() {
             variant="outlined"
             size="large"
             className="h-14 w-60 text-xl flex items-center gap-3"
-            onClick={() => navigate("/learn")}
+            startIcon={<TravelExploreIcon />}
+            onClick={() => navigate("/learn_exo")}
             sx={{
               color: '#f5eff7',
               borderColor: '#f5eff7',
@@ -56,7 +51,6 @@ function HomePage() {
               }
             }}
           >
-            <TravelExploreIcon className="text-xl" />
             Learn about Exoplanet
           </Button>
 
@@ -64,7 +58,8 @@ function HomePage() {
             variant="outlined"
             size="large"
             className="h-14 w-60 text-xl flex items-center gap-3"
-            onClick={() => navigate("/learn")}
+            startIcon={<PsychologyIcon />}
+            onClick={() => navigate("/learn_ml")}
             sx={{
               color: '#f5eff7',
               borderColor: '#f5eff7',
@@ -74,7 +69,6 @@ function HomePage() {
               }
             }}
           >
-            <PsychologyIcon className="text-xl" />
             Learn about ML
           </Button>
 
@@ -82,6 +76,7 @@ function HomePage() {
             variant="contained"
             size="large"
             className="h-14 w-60 text-xl flex items-center gap-3"
+            startIcon={<PlayArrowIcon />}
             onClick={() => navigate("/select")}
             sx={{
               backgroundColor: '#2563eb',
@@ -91,8 +86,17 @@ function HomePage() {
               color: 'white'
             }}
           >
-            <PlayArrowIcon className="text-xl" />
-            Launch the model
+            Launch Your model
+          </Button>
+
+          <Button
+            variant="contained"
+            size="large"
+            className="h-14 w-60 text-xl flex items-center gap-3"
+            startIcon={<PlayArrowIcon />}
+            onClick={() => navigate("/pretrained")}
+          >
+            Using Pretrained Model
           </Button>
 
         </div>
