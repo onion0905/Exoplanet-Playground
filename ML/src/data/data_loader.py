@@ -19,7 +19,7 @@ class DataLoader:
         self.logger = logging.getLogger(__name__)
         
     def load_nasa_dataset(self, dataset_name: str) -> pd.DataFrame:
-        """Load a NASA dataset by name."""
+        """Load a NASA dataset by name (raw/combined data)."""
         dataset_files = {
             'kepler': 'kepler_raw.csv',
             'tess': 'tess_raw.csv',
@@ -44,6 +44,52 @@ class DataLoader:
             
         except Exception as e:
             self.logger.error(f"Error loading {dataset_name} dataset: {str(e)}")
+            raise
+    
+    def load_nasa_trainval(self, dataset_name: str) -> pd.DataFrame:
+        """Load NASA trainval dataset for custom training."""
+        dataset_files = {
+            'kepler': 'kepler_trainval.csv',
+            'tess': 'tess_trainval.csv',
+            'k2': 'k2_trainval.csv'
+        }
+        
+        if dataset_name not in dataset_files:
+            raise ValueError(f"Unknown dataset: {dataset_name}. Available: {list(dataset_files.keys())}")
+        
+        filepath = self.data_dir / dataset_files[dataset_name]
+        if not filepath.exists():
+            raise FileNotFoundError(f"Trainval dataset file not found: {filepath}")
+        
+        try:
+            df = pd.read_csv(filepath, comment='#')
+            self.logger.info(f"Loaded {dataset_name} trainval: {df.shape[0]} rows, {df.shape[1]} columns")
+            return df
+        except Exception as e:
+            self.logger.error(f"Error loading {dataset_name} trainval: {str(e)}")
+            raise
+    
+    def load_nasa_test(self, dataset_name: str) -> pd.DataFrame:
+        """Load NASA test dataset for predictions."""
+        dataset_files = {
+            'kepler': 'kepler_test.csv',
+            'tess': 'tess_test.csv',
+            'k2': 'k2_test.csv'
+        }
+        
+        if dataset_name not in dataset_files:
+            raise ValueError(f"Unknown dataset: {dataset_name}. Available: {list(dataset_files.keys())}")
+        
+        filepath = self.data_dir / dataset_files[dataset_name]
+        if not filepath.exists():
+            raise FileNotFoundError(f"Test dataset file not found: {filepath}")
+        
+        try:
+            df = pd.read_csv(filepath, comment='#')
+            self.logger.info(f"Loaded {dataset_name} test: {df.shape[0]} rows, {df.shape[1]} columns")
+            return df
+        except Exception as e:
+            self.logger.error(f"Error loading {dataset_name} test: {str(e)}")
             raise
     
     def load_user_dataset(self, filepath: Union[str, Path]) -> pd.DataFrame:

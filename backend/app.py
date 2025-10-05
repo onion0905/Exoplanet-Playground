@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 # ========================================
 
 def _run_training_background(session_id: str, config: Dict[str, Any]):
-    """Background task for model training."""
+    """Background task for custom model training."""
     try:
         # Start training
         result = ml_integration.start_custom_training(session_id, config)
@@ -101,6 +101,66 @@ def _run_training_background(session_id: str, config: Dict[str, Any]):
         
     except Exception as e:
         logger.error(f"Error in background training: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        session_manager.set_error(session_id, str(e))
+
+
+def _run_pretrained_background(session_id: str, config: Dict[str, Any]):
+    """Background task for pretrained model prediction."""
+    try:
+        # Start pretrained prediction
+        result = ml_integration.run_pretrained_prediction(session_id, config)
+        
+        if result.get('status') == 'error':
+            logger.error(f"Pretrained prediction error: {result.get('error')}")
+            session_manager.set_error(session_id, result.get('error', 'Prediction failed'))
+            return
+        
+        # Poll progress until complete
+        progress_info = None
+        max_attempts = 300  # 150 seconds max
+        attempts = 0
+        
+        while attempts < max_attempts:
+            progress_info = ml_integration.get_training_progress(session_id)
+            if progress_info:
+                # Don't override status if already completed/error in session_manager
+                current_session = session_manager.get_session(session_id)
+                if current_session and current_session['status'] not in ['completed', 'error']:
+                    session_manager.update_progress(
+                        session_id,
+                        progress_info['progress'],
+                        progress_info['current_step'],
+                        'running'
+                    )
+                
+                if progress_info['status'] in ['completed', 'error']:
+                    break
+            
+            time.sleep(0.5)
+            attempts += 1
+        
+        # Check final status
+        if not progress_info:
+            session_manager.set_error(session_id, 'No progress information available')
+            return
+            
+        if progress_info['status'] == 'error':
+            session_manager.set_error(session_id, 'Prediction failed during execution')
+            return
+        
+        # Get final results
+        final_result = ml_integration.get_pretrained_result(session_id)
+        if final_result:
+            session_manager.set_result(session_id, final_result)
+            logger.info(f"Pretrained prediction completed successfully for session {session_id}")
+        else:
+            logger.error(f"Failed to get prediction results for session {session_id}")
+            session_manager.set_error(session_id, 'Failed to get prediction results')
+        
+    except Exception as e:
+        logger.error(f"Error in background pretrained prediction: {str(e)}")
         import traceback
         traceback.print_exc()
         session_manager.set_error(session_id, str(e))
@@ -266,9 +326,9 @@ def pretrained_predict():
         # Create session
         session_manager.create_session(session_id, 'pretrained_prediction', config)
         
-        # Start prediction in background (reuse training logic)
+        # Start prediction in background (use pretrained logic)
         thread = threading.Thread(
-            target=_run_training_background,
+            target=_run_pretrained_background,
             args=(session_id, config)
         )
         thread.daemon = True
