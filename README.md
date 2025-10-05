@@ -17,3 +17,8 @@ cd frontend
 npm i
 npm run dev
 ```
+4. setup the backend
+```bash
+python backend/app.py
+```
+5. Access the website through `http://localhost:3000`
