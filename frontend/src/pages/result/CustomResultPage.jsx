@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import ExoplanetVisualization from "../../components/ExoplanetVisualization";
 import StarVisualization from "../../components/StarVisualization";
+import ConfusionMatrix from "../../components/ConfusionMatrix";
 import { 
   Button, 
   Table, 
@@ -36,73 +37,106 @@ function CustomResultPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedPlanet, setSelectedPlanet] = useState(null);
 
-  // 模擬預測結果數據
+  // 模擬預測結果數據 - 三分類
   const predictionResults = [
     {
       id: 1,
       name: "Kepler-452b",
       prediction: "Exoplanet",
-      confidence: 0.94,
+      confidence: 0.997,
       reasons: [
         "Strong transit signal detected with 0.8% depth",
         "Orbital period of 385 days indicates stable orbit",
         "Stellar radius of 1.11 solar radii suggests habitable zone",
         "Transit duration of 10.6 hours consistent with exoplanet"
       ],
-      isPositive: true
+      classificationType: "exoplanet"
     },
     {
       id: 2,
       name: "Kepler-186f",
       prediction: "Exoplanet",
-      confidence: 0.87,
+      confidence: 0.997,
       reasons: [
         "Clear transit pattern with 0.3% depth",
         "Orbital period of 130 days in habitable zone",
         "M-dwarf host star with stable light curve",
         "No stellar activity correlation detected"
       ],
-      isPositive: true
+      classificationType: "exoplanet"
     },
     {
       id: 3,
       name: "Kepler-1234",
-      prediction: "False Positive",
-      confidence: 0.76,
+      prediction: "Candidate",
+      confidence: 0.997,
       reasons: [
-        "Transit signal correlates with stellar rotation period",
-        "Variable transit depth suggests stellar activity",
-        "Asymmetric transit shape indicates stellar spot",
-        "No secondary eclipse detected"
+        "Transit signal shows some planetary characteristics",
+        "Moderate transit depth with periodic pattern",
+        "Requires further observation to confirm",
+        "Potential stellar activity interference"
       ],
-      isPositive: false
+      classificationType: "candidate"
     },
     {
       id: 4,
       name: "Kepler-5678",
       prediction: "Exoplanet",
-      confidence: 0.91,
+      confidence: 0.997,
       reasons: [
         "Deep transit signal of 1.2% depth",
         "Circular orbit with 200-day period",
         "Consistent transit timing variations",
         "Secondary eclipse detected confirming planetary nature"
       ],
-      isPositive: true
+      classificationType: "exoplanet"
     },
     {
       id: 5,
       name: "Kepler-9999",
-      prediction: "False Positive",
-      confidence: 0.82,
+      prediction: "Not-Exoplanet",
+      confidence: 0.997,
       reasons: [
         "Transit depth varies with stellar activity cycle",
         "Light curve shows stellar pulsation patterns",
         "No clear orbital periodicity",
         "Background binary star contamination detected"
       ],
-      isPositive: false
+      classificationType: "not-exoplanet"
+    },
+    {
+      id: 6,
+      name: "Kepler-2468",
+      prediction: "Candidate",
+      confidence: 0.997,
+      reasons: [
+        "Weak but consistent transit signal",
+        "Uncertain orbital parameters",
+        "Possible instrumental noise",
+        "Needs additional data for confirmation"
+      ],
+      classificationType: "candidate"
+    },
+    {
+      id: 7,
+      name: "Kepler-1357",
+      prediction: "Not-Exoplanet",
+      confidence: 0.997,
+      reasons: [
+        "Transit signal correlates with stellar rotation",
+        "Asymmetric light curve indicates stellar spot",
+        "No secondary eclipse detected",
+        "Stellar variability confirmed"
+      ],
+      classificationType: "not-exoplanet"
     }
+  ];
+
+  // 混淆矩陣數據
+  const confusionMatrixData = [
+    [128, 7, 9],   // Not-Exoplanet: 128正確, 7被誤判為Candidate, 9被誤判為Exoplanet
+    [8, 52, 6],    // Candidate: 8被誤判為Not-Exoplanet, 52正確, 6被誤判為Exoplanet
+    [6, 10, 157]   // Exoplanet: 6被誤判為Not-Exoplanet, 10被誤判為Candidate, 157正確
   ];
 
   const handleExpandRow = (planetId) => {
@@ -146,7 +180,16 @@ function CustomResultPage() {
   };
 
   const getPredictionColor = (prediction) => {
-    return prediction === 'Exoplanet' ? '#10b981' : '#ef4444';
+    switch (prediction) {
+      case 'Exoplanet':
+        return '#10b981'; // green
+      case 'Candidate':
+        return '#f59e0b'; // amber
+      case 'Not-Exoplanet':
+        return '#ef4444'; // red
+      default:
+        return '#6b7280'; // gray
+    }
   };
 
   return (
@@ -170,14 +213,25 @@ function CustomResultPage() {
         </div>
 
         {/* 結果統計卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="bg-gradient-to-br from-green-800/60 to-green-900/60 backdrop-blur-sm border border-green-600/30">
             <CardContent className="text-center p-6">
               <Typography variant="h4" className="text-green-400 font-bold mb-2">
                 {predictionResults.filter(p => p.prediction === 'Exoplanet').length}
               </Typography>
               <Typography variant="body1" className="text-white">
-                Exoplanets Detected
+                Exoplanets
+              </Typography>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gradient-to-br from-amber-800/60 to-amber-900/60 backdrop-blur-sm border border-amber-600/30">
+            <CardContent className="text-center p-6">
+              <Typography variant="h4" className="text-amber-400 font-bold mb-2">
+                {predictionResults.filter(p => p.prediction === 'Candidate').length}
+              </Typography>
+              <Typography variant="body1" className="text-white">
+                Candidates
               </Typography>
             </CardContent>
           </Card>
@@ -185,10 +239,10 @@ function CustomResultPage() {
           <Card className="bg-gradient-to-br from-red-800/60 to-red-900/60 backdrop-blur-sm border border-red-600/30">
             <CardContent className="text-center p-6">
               <Typography variant="h4" className="text-red-400 font-bold mb-2">
-                {predictionResults.filter(p => p.prediction === 'False Positive').length}
+                {predictionResults.filter(p => p.prediction === 'Not-Exoplanet').length}
               </Typography>
               <Typography variant="body1" className="text-white">
-                False Positives
+                Not-Exoplanets
               </Typography>
             </CardContent>
           </Card>
@@ -199,7 +253,7 @@ function CustomResultPage() {
                 {(predictionResults.reduce((acc, p) => acc + p.confidence, 0) / predictionResults.length * 100).toFixed(1)}%
               </Typography>
               <Typography variant="body1" className="text-white">
-                Average Confidence
+                Avg Confidence
               </Typography>
             </CardContent>
           </Card>
@@ -347,6 +401,28 @@ function CustomResultPage() {
           </CardContent>
         </Card>
 
+        {/* Confusion Matrix */}
+        <Card className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 shadow-2xl mb-8">
+          <CardContent className="p-0">
+            <div className="p-6 border-b border-gray-600/30">
+              <Typography variant="h5" className="text-white font-semibold">
+                Model Performance Analysis
+              </Typography>
+              <Typography variant="body2" className="text-gray-400 mt-2">
+                Confusion Matrix showing classification accuracy across all three categories
+              </Typography>
+            </div>
+            <div className="p-6">
+              <ConfusionMatrix 
+                data={confusionMatrixData}
+                labels={["Not-Exoplanet", "Candidate", "Exoplanet"]}
+                title="Custom Model Performance"
+                className="min-h-0"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         {/* 底部操作按鈕 */}
         <div className="flex justify-center gap-6 mb-10">
           <Button
@@ -389,11 +465,21 @@ function CustomResultPage() {
           3D Visualization - {selectedPlanet?.name}
         </DialogTitle>
         <DialogContent>
-          <div className="h-96 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-lg border border-gray-600/30 overflow-hidden">
-            {selectedPlanet?.isPositive ? (
-              <ExoplanetVisualization width={800} height={384} />
+          <div className="w-full aspect-[2/1] bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-lg border border-gray-600/30 overflow-hidden">
+            {selectedPlanet?.classificationType === 'exoplanet' ? (
+              <ExoplanetVisualization width={800} height={400} />
+            ) : selectedPlanet?.classificationType === 'candidate' ? (
+              <div className="w-full h-full flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-32 h-32 mx-auto mb-4 bg-gradient-to-br from-amber-500/20 to-amber-600/20 rounded-full flex items-center justify-center">
+                    <span className="text-6xl">🔍</span>
+                  </div>
+                  <p className="text-white text-lg font-semibold">Candidate Object</p>
+                  <p className="text-gray-400 text-sm">Requires further observation</p>
+                </div>
+              </div>
             ) : (
-              <StarVisualization width={800} height={384} temperature={selectedPlanet?.temperature || 40000} />
+              <StarVisualization width={800} height={400} temperature={selectedPlanet?.temperature || 40000} />
             )}
           </div>
         </DialogContent>
