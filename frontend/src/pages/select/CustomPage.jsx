@@ -4,6 +4,7 @@ import Navbar from "../../components/Navbar";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import DownloadIcon from '@mui/icons-material/Download';
 import { 
   Button,
   FormControl,
@@ -27,6 +28,10 @@ function CustomPage() {
   const [dragActive, setDragActive] = useState(false);
   const [dragActiveTest, setDragActiveTest] = useState(false);
   const [hyperparameters, setHyperparameters] = useState({});
+  
+  // 用戶上傳數據的格式選擇
+  const [selectedTrainingFormat, setSelectedTrainingFormat] = useState('kepler');
+  const [selectedTestingFormat, setSelectedTestingFormat] = useState('kepler');
 
   const datasets = [
     {
@@ -126,6 +131,16 @@ function CustomPage() {
     } else {
       setSelectedDataset('');
     }
+  };
+
+  // 下載 sample.csv 的函數
+  const handleDownloadSample = (format, dataType) => {
+    const link = document.createElement('a');
+    link.href = '/sample.csv';
+    link.download = `${format}_${dataType}_sample.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleDatasetSelect = (dataset) => {
@@ -416,6 +431,40 @@ function CustomPage() {
                       <span className="text-green-400 text-lg">📁</span>
                     </div>
                     <h3 className="text-white text-xl font-semibold">Upload Your Data</h3>
+                  </div>
+                  
+                  {/* Data Format Selection */}
+                  <div className="mb-6">
+                    <h4 className="text-white text-lg font-semibold mb-4">Select Data Format</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {datasets.map((dataset) => (
+                        <div key={dataset.id} className="flex items-center justify-between p-4 bg-gray-700/30 rounded-lg border border-gray-600/30">
+                          <div className="flex items-center">
+                            <div className="w-8 h-8 rounded-lg mr-3" style={{ backgroundColor: dataset.color + '20' }}>
+                              <img src={dataset.img} alt={dataset.name} className="w-full h-full object-cover rounded-lg" />
+                            </div>
+                            <span className="text-white font-medium">{dataset.name}</span>
+                          </div>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<DownloadIcon />}
+                            onClick={() => handleDownloadSample(dataset.id, 'training')}
+                            sx={{
+                              color: 'white',
+                              borderColor: 'rgba(255, 255, 255, 0.3)',
+                              fontSize: '0.75rem',
+                              '&:hover': {
+                                borderColor: 'rgba(255, 255, 255, 0.5)',
+                                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                              }
+                            }}
+                          >
+                            Sample
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                   
                   {/* Grid layout for training and testing data */}
