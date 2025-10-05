@@ -7,8 +7,8 @@ function Navbar() {
   const location = useLocation();
 
   const navigationLinks = [
-    { label: "About us" }, 
-    { label: "Contact" }
+    { label: "About us", path: "/about" }, 
+    { label: "Contact", path: "/contact" }
   ];
 
   return (
@@ -25,6 +25,7 @@ function Navbar() {
           <Button
             key={index}
             variant="text"
+            onClick={() => navigate(link.path)}
             sx={{
               color: 'white',
               fontSize: '1rem',

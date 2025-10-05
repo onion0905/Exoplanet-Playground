@@ -77,7 +77,7 @@ function HomePage() {
             size="large"
             className="h-14 w-60 text-xl flex items-center gap-3"
             startIcon={<PlayArrowIcon />}
-            onClick={() => navigate("/select")}
+            onClick={() => navigate("/custom")}
             sx={{
               backgroundColor: '#2563eb',
               '&:hover': {

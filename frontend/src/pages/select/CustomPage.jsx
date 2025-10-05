@@ -14,10 +14,9 @@ import {
   Card,
   CardContent,
   Typography,
-  Chip
 } from '@mui/material';
 
-function SelectPage() {
+function CustomPage() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [dataSource, setDataSource] = useState('nasa'); // 'nasa' or 'user'
@@ -181,10 +180,6 @@ function SelectPage() {
         setUploadedTestFile(file);
       }
     }
-  };
-
-  const handleStartTraining = () => {
-    navigate("/training");
   };
 
   // 計算當前可以到達的最大步驟
@@ -741,7 +736,7 @@ function SelectPage() {
                 variant="contained"
                 size="large"
                 startIcon={<PlayArrowIcon />}
-                onClick={handleStartTraining}
+                onClick={() => navigate("/custom/progress")}
                 disabled={!isTrainingReady}
                 sx={{
                   backgroundColor: '#2563eb',
@@ -768,4 +763,4 @@ function SelectPage() {
   );
 }
 
-export default SelectPage;
+export default CustomPage;

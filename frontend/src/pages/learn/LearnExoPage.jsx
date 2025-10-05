@@ -44,13 +44,13 @@ function LearnPage() {
           <p className="mb-6">
           Exoplanets come in diverse types, each with unique compositions and appearances:
           </p>
-          <ul className="mb-6">
+          <ul className="mb-6 list-disc list-inside ml-5">
             <li>Gas Giants — Planets similar to or larger than Jupiter or Saturn, composed mostly of hydrogen and helium. Hot Jupiters orbit close to their stars and reach extreme temperatures.</li>
             <li>Neptunian Planets — Similar in size to Neptune or Uranus, with mixed interiors and thick hydrogen-helium atmospheres. Mini-Neptunes are smaller versions, between Earth and Neptune in size.</li>
             <li>Super-Earths — Rocky planets more massive than Earth but lighter than Neptune; they may or may not have atmospheres.</li>
             <li>Terrestrial Planets — Earth-sized or smaller, made of rock, silicate, water, or carbon. Some may have atmospheres or oceans, hinting at potential habitability.</li>
           </ul>
-          <img src="/exo_type.png" alt="Types of exoplanets" className="w-full h-auto" />
+          <img src="/exo_type.png" alt="Types of exoplanets" className="w-full h-auto m-10" />
           <p className="mb-6">
           Reference: <a href="https://science.nasa.gov/exoplanets/planet-types/" className="text-blue-500">https://science.nasa.gov/exoplanets/planet-types/</a>
           </p>
@@ -64,7 +64,7 @@ function LearnPage() {
           <p className="mb-6">
           Scientists use several techniques to discover exoplanets, with the transit and radial velocity methods being the most common.
           </p>
-          <ul className="mb-6">
+          <ul className="mb-6 list-disc list-inside ml-5">
             <li>Transit Method — When a planet passes in front of its host star, it temporarily blocks a small portion of the starlight. This tiny dip in brightness allows astronomers to infer the presence, size, and orbit of the exoplanet.</li>
             <li>Radial Velocity Method — As a planet orbits, its gravity causes the star to wobble slightly. This motion shifts the color of the star’s light: toward blue when it moves closer and toward red when it moves away. By measuring these subtle shifts in the star’s spectrum, scientists can detect the unseen planet’s presence and estimate its mass.</li>
           </ul>

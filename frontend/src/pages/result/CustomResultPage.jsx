@@ -215,7 +215,7 @@ function CustomResultPage() {
                   <Button
                     variant="outlined"
                     startIcon={<AddIcon />}
-                    onClick={() => navigate("/select")}
+                    onClick={() => navigate("/custom")}
                     sx={{
                       color: 'white',
                       borderColor: 'rgba(255, 255, 255, 0.3)',
@@ -351,7 +351,7 @@ function CustomResultPage() {
           <Button
             variant="outlined"
             size="large"
-            onClick={() => navigate("/select")}
+            onClick={() => navigate("/custom")}
             sx={{
               color: '#f5eff7',
               borderColor: '#f5eff7',
