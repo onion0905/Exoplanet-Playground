@@ -10,36 +10,26 @@ import logging
 # Define columns to exclude for each dataset based on NASA API documentation
 KEPLER_EXCLUDE_PATTERNS = [
     # Identification Columns
-    'kepid', 'kepoi_name', 'kepler_name',
     # Exoplanet Archive Information  
-    'koi_disposition', 'koi_vet_stat', 'koi_vet_date',
     # Project Disposition Columns (commented out in train_rf_clean.py for better performance)
     # 'koi_pdisposition', 'koi_score', 'koi_fpflag_', 'koi_disp_prov', 'koi_comment',
     # Other metadata
-    'rowid', 'koi_tce_delivname', 'koi_datalink_', 'koi_quarters'
 ]
 
 K2_EXCLUDE_PATTERNS = [
     # Identification Columns
-    'epic_candname', 'epic_hostname', 'k2_name', 'epic_name',
     # Archive Information (excluding target - disposition is never excluded as it's the target)
-    'disp_prov', 'vet_stat', 'vet_date', 'soltype',
     # Disposition Columns (commented out in train_rf_clean.py for better performance)
     # 'score', 'fpflag_', 'comment', 
-    'sy_pnum', 'hostname', 'pl_name',
     # Other metadata
-    'rowid', 'delivname', 'datalink_', 'quarters'
 ]
 
 TESS_EXCLUDE_PATTERNS = [
     # Identification Columns
-    'tid', 'toi', 'tic_', 'toipfx', 'ctoi',
     # Archive Information (excluding target - tfopwg_disp is never excluded as it's the target)
-    'disposition', 'disp_prov',
     # Disposition Columns (commented out in train_rf_clean.py for better performance)
     # 'score', 'fpflag_', 'comment', 'vet_stat', 'vet_date',
     # Other metadata  
-    'rowid', 'delivname', 'datalink_'
 ]
 
 

@@ -14,7 +14,7 @@ from ..utils.model_factory import ModelFactory
 
 class TrainingAPI:
     def get_validation_confusion_matrix(self, session_id: str):
-        """Return confusion matrix for validation set, with labels ['planet', 'candidate', 'false_positive'] in that order if present."""
+        """Return confusion matrix for validation set, with labels ['planet', 'candidate', 'false_positive'] in that order if present. Handles empty label case gracefully."""
         session = self.current_session[session_id]
         prepared = session.get('prepared_data', {})
         model = session.get('model')
@@ -26,6 +26,9 @@ class TrainingAPI:
             label_order = ['planet', 'candidate', 'false_positive']
             # Only include labels present in the data
             present_labels = [lbl for lbl in label_order if lbl in set(y_val)]
+            if not present_labels:
+                # No labels present, cannot compute confusion matrix
+                return {'labels': [], 'confusion_matrix': [], 'message': 'No labels present in validation set.'}
             cm = confusion_matrix(y_val, y_pred, labels=present_labels)
             return {'labels': present_labels, 'confusion_matrix': cm.tolist()}
         return None

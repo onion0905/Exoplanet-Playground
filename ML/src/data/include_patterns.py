@@ -4,9 +4,9 @@ KEPLER_INCLUDE_PATTERNS = [
 ]
 
 K2_INCLUDE_PATTERNS = [
-    'disp_refname', 'disc_refname', 'default_flag', 'rv_flag', 'pl_nnotes',
-    'pl_trandep', 'st_refname', 'st_masserr2', 'pl_letter', 'disc_pubdate',
-    'pl_ratrorerr2', 'pl_refname', 'pl_radjerr2', 'st_masserr1', 'st_tefferr2',
+    'default_flag', 'rv_flag', 'pl_nnotes',
+    'pl_trandep', 'st_masserr2', 'pl_letter', 'disc_pubdate',
+    'pl_ratrorerr2', 'pl_radjerr2', 'st_masserr1', 'st_tefferr2',
     'pl_radeerr2', 'sy_disterr2', 'sy_plx', 'st_tefferr1', 'sy_dist',
     'pl_tranmid', 'disc_year', 'pl_tsystemref', 'sy_gaiamagerr1', 'pl_rade',
     'rowupdate', 'sy_disterr1', 'pl_radj', 'pl_pubdate', 'sy_gaiamagerr2',

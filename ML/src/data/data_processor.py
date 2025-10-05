@@ -24,36 +24,42 @@ class DataProcessor:
     def create_target_variable(self, data: pd.DataFrame, 
                              target_column: str,
                              target_mapping: Dict[str, str] = None) -> pd.Series:
-        """Create a target variable for classification."""
+        """Create a target variable for classification. Always canonicalize to 'planet', 'candidate', 'false_positive'."""
         if target_column not in data.columns:
             raise ValueError(f"Target column '{target_column}' not found in data")
-        
         target_series = data[target_column].copy()
-        
         # Apply target mapping if provided
         if target_mapping:
             target_series = target_series.map(target_mapping)
             self.logger.info(f"Applied target mapping: {target_mapping}")
-        
-        # Handle common exoplanet dispositions
-        if target_column in ['koi_disposition', 'disposition', 'tfopwg_disp']:
-            # Standard classification for exoplanet validation
-            disposition_mapping = {
-                'CONFIRMED': 'planet',
-                'CANDIDATE': 'candidate', 
-                'FALSE POSITIVE': 'false_positive',
-                'NOT DISPOSITIONED': 'unknown'
-            }
-            
-            # Apply case-insensitive mapping
-            target_series_upper = target_series.str.upper()
-            for key, value in disposition_mapping.items():
-                target_series.loc[target_series_upper == key] = value
-        
-        # Apply dataset-specific label mapping if needed
-        if hasattr(self.column_filter, 'dataset_type') and self.column_filter.dataset_type:
-            target_series = self.column_filter.map_target_labels(target_series, self.column_filter.dataset_type)
-        
+        # Canonical mapping for all known label variants
+        canonical_map = {
+            # General
+            'CONFIRMED': 'planet', 'confirmed': 'planet', 'Confirmed': 'planet', 'PL': 'planet', 'pl': 'planet', 'planet': 'planet',
+            'CANDIDATE': 'candidate', 'candidate': 'candidate', 'PC': 'candidate', 'pc': 'candidate', 'Candidate': 'candidate',
+            'FALSE POSITIVE': 'false_positive', 'false positive': 'false_positive', 'FALSE_POSITIVE': 'false_positive', 'FP': 'false_positive', 'fp': 'false_positive', 'False Positive': 'false_positive', 'false_positive': 'false_positive',
+            # TESS-specific (from tfopwg_disp):
+            'KP': 'planet', 'kp': 'planet', 'CP': 'planet', 'cp': 'planet',
+            'APC': 'candidate', 'apc': 'candidate',
+        }
+        # Apply mapping (case-insensitive, strip spaces)
+        def canon(val):
+            if pd.isnull(val):
+                return val
+            v = str(val).strip().replace('_', ' ').replace('-', ' ').upper()
+            v = v.replace(' ', '_')
+            # Try direct
+            if v in canonical_map:
+                return canonical_map[v]
+            # Try with spaces replaced
+            v2 = v.replace('_', ' ')
+            if v2 in canonical_map:
+                return canonical_map[v2]
+            # Try original value
+            if val in canonical_map:
+                return canonical_map[val]
+            return val
+        target_series = target_series.apply(canon)
         self.target_name = target_column
         return target_series
     
@@ -114,31 +120,55 @@ class DataProcessor:
     
     def handle_missing_values(self, X: pd.DataFrame, 
                             strategy: str = 'median',
-                            fit: bool = True) -> pd.DataFrame:
-        """Handle missing values in features."""
+                            fit: bool = True,
+                            whitelist: list = None) -> pd.DataFrame:
+        """Handle missing values in features. Always fit imputers for all whitelist columns during training. During transform, always use training statistics or a constant fallback (never test set statistics)."""
         if fit:
             self.imputers = {}
-        
-        X_imputed = X.copy()
-        
-        for column in X.columns:
-            if X[column].isnull().any():
-                if fit:
-                    # Determine strategy for this column
+            # Ensure all whitelist columns have an imputer, even if missing in X
+            columns = whitelist if whitelist is not None else X.columns
+            for column in columns:
+                if column in X.columns and X[column].notnull().any():
+                    # Fit imputer on actual data
                     if X[column].dtype in ['object', 'category']:
                         imputer_strategy = 'most_frequent'
                     else:
                         imputer_strategy = strategy
-                    
                     imputer = SimpleImputer(strategy=imputer_strategy)
-                    self.imputers[column] = imputer
-                    X_imputed[column] = imputer.fit_transform(X[[column]]).flatten()
+                    self.imputers[column] = imputer.fit(X[[column]])
                 else:
-                    if column in self.imputers:
-                        X_imputed[column] = self.imputers[column].transform(X[[column]]).flatten()
+                    # Column missing or all NaN, fit imputer on dummy value
+                    if column in X.columns and X[column].dtype in ['object', 'category']:
+                        dummy = pd.DataFrame(['UNKNOWN'], columns=[column])
+                        imputer = SimpleImputer(strategy='constant', fill_value='UNKNOWN')
                     else:
-                        self.logger.warning(f"No imputer found for column {column}")
-        
+                        dummy = pd.DataFrame([0.0], columns=[column])
+                        imputer = SimpleImputer(strategy='constant', fill_value=0.0)
+                    self.imputers[column] = imputer.fit(dummy)
+        X_imputed = X.copy()
+        columns = whitelist if whitelist is not None else X.columns
+        for column in columns:
+            if column in X_imputed.columns:
+                if column in self.imputers:
+                    X_imputed[column] = self.imputers[column].transform(X_imputed[[column]]).flatten()
+                else:
+                    self.logger.warning(f"No imputer found for column {column}, filling with constant fallback.")
+                    if X_imputed[column].dtype.kind in 'biufc':
+                        X_imputed[column] = X_imputed[column].fillna(0.0)
+                    else:
+                        X_imputed[column] = X_imputed[column].fillna('UNKNOWN')
+            else:
+                # Column missing in test set, add with fallback value
+                if fit:
+                    continue  # Only add missing columns at transform time
+                if column in self.imputers:
+                    if hasattr(self.imputers[column], 'statistics_'):
+                        fill_val = self.imputers[column].statistics_[0]
+                    else:
+                        fill_val = 0.0
+                else:
+                    fill_val = 0.0
+                X_imputed[column] = fill_val
         return X_imputed
     
     def scale_features(self, X: pd.DataFrame, 

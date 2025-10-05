@@ -12,7 +12,7 @@ from ..data.data_processor import DataProcessor
 class PredictionAPI:
 
     def predict_with_explanation(self, model_id: str, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Predict with per-sample explanations and confidence. Returns label, confidence, and top 5 features."""
+        """Predict with per-sample explanations and confidence. Returns label, confidence, and top 5 features. Handles models without classes_."""
         if model_id not in self.loaded_models:
             raise ValueError(f"Model {model_id} not loaded")
         model = self.loaded_models[model_id]['model']
@@ -24,15 +24,26 @@ class PredictionAPI:
         input_df = input_df[model.feature_names]
         # Predict
         preds = model.predict(input_df)
-        proba = model.predict_proba(input_df)
-        class_indices = [list(model.model.classes_).index(p) for p in preds]
-        confidences = [proba[i, idx] for i, idx in enumerate(class_indices)]
+        # Try to get probabilities and class indices
+        try:
+            proba = model.predict_proba(input_df)
+            if hasattr(model.model, 'classes_'):
+                class_labels = list(model.model.classes_)
+            elif hasattr(model, 'classes_'):
+                class_labels = list(model.classes_)
+            else:
+                # Fallback: use unique values from training or prediction
+                class_labels = sorted(set(preds))
+            class_indices = [class_labels.index(p) if p in class_labels else 0 for p in preds]
+            confidences = [proba[i, idx] for i, idx in enumerate(class_indices)]
+        except Exception:
+            confidences = [None] * len(preds)
         # SHAP or feature importances
         try:
             import shap
             explainer = shap.TreeExplainer(model.model)
             shap_values = explainer.shap_values(input_df)
-            if isinstance(shap_values, list):
+            if isinstance(shap_values, list) and 'class_indices' in locals():
                 explanations = []
                 for i, idx in enumerate(class_indices):
                     sample_shap = dict(zip(input_df.columns, shap_values[idx][i]))
@@ -68,7 +79,7 @@ class PredictionAPI:
         filtered = filter_features(feats)
         return {
             'label': str(preds[0]),
-            'confidence': float(confidences[0]),
+            'confidence': float(confidences[0]) if confidences[0] is not None else None,
             'top_features': filtered
         }
     """API interface for making predictions with trained exoplanet models."""
