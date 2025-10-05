@@ -1,1 +1,0 @@
-# Revert to commit c22dd8b for ML/src/api/training_api.py to restore training with 'candidate' class
