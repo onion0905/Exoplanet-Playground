@@ -87,69 +87,139 @@ def get_trained_models():
 
 @select_bp.route('/upload', methods=['POST'])
 def upload_custom_data():
-    """Upload custom dataset for training"""
+    """Upload custom dataset for training - supports single file or separate train/test files"""
     try:
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file provided'}), 400
+        upload_type = request.form.get('upload_type', 'single_file')  # 'single_file' or 'separate_files'
         
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'No file selected'}), 400
+        uploaded_files = {}
+        file_info = {}
         
-        # Check file extension
-        allowed_extensions = ['.csv', '.xlsx', '.xls']
-        file_ext = os.path.splitext(file.filename)[1].lower()
-        if file_ext not in allowed_extensions:
-            return jsonify({'error': f'File type not supported. Use: {", ".join(allowed_extensions)}'}), 400
-        
-        # Secure the filename and save
-        filename = secure_filename(file.filename)
-        unique_filename = f"{uuid.uuid4().hex}_{filename}"
-        
-        upload_dir = current_app.config['UPLOAD_FOLDER']
-        os.makedirs(upload_dir, exist_ok=True)
-        
-        file_path = os.path.join(upload_dir, unique_filename)
-        file.save(file_path)
-        
-        # Validate the uploaded data
-        try:
-            if file_ext == '.csv':
-                df = pd.read_csv(file_path)
-            else:
-                df = pd.read_excel(file_path)
+        if upload_type == 'single_file':
+            # Single file upload - will be split into train/test
+            if 'data_file' not in request.files:
+                return jsonify({'error': 'No data file provided'}), 400
             
-            # Basic validation
-            if df.empty:
-                os.remove(file_path)
-                return jsonify({'error': 'Uploaded file is empty'}), 400
+            file = request.files['data_file']
+            if file.filename == '':
+                return jsonify({'error': 'No file selected'}), 400
             
-            # Get dataset info
-            dataset_info = {
-                'filename': unique_filename,
-                'original_filename': filename,
-                'file_path': file_path,
-                'rows': len(df),
-                'columns': len(df.columns),
-                'column_names': df.columns.tolist(),
-                'data_types': df.dtypes.astype(str).to_dict(),
-                'missing_values': df.isnull().sum().to_dict(),
-                'sample_data': df.head().to_dict('records')
+            uploaded_files['data_file'] = _process_uploaded_file(file, 'data')
+            file_info = _analyze_uploaded_file(uploaded_files['data_file'])
+            
+        elif upload_type == 'separate_files':
+            # Separate training and testing files
+            required_files = ['training_file', 'testing_file']
+            for file_key in required_files:
+                if file_key not in request.files:
+                    return jsonify({'error': f'Missing {file_key}'}), 400
+                
+                file = request.files[file_key]
+                if file.filename == '':
+                    return jsonify({'error': f'No {file_key} selected'}), 400
+                
+                uploaded_files[file_key] = _process_uploaded_file(file, file_key.split('_')[0])
+            
+            # Analyze both files
+            train_info = _analyze_uploaded_file(uploaded_files['training_file'])
+            test_info = _analyze_uploaded_file(uploaded_files['testing_file'])
+            
+            file_info = {
+                'upload_type': 'separate_files',
+                'training_file_info': train_info,
+                'testing_file_info': test_info,
+                'common_columns': list(set(train_info['column_names']) & set(test_info['column_names'])),
+                'total_rows': train_info['rows'] + test_info['rows']
             }
-            
-            return jsonify({
-                'message': 'File uploaded successfully',
-                'dataset_info': dataset_info
-            })
-            
-        except Exception as e:
-            # Clean up file on error
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            return jsonify({'error': f'Failed to process file: {str(e)}'}), 400
+        else:
+            return jsonify({'error': 'Invalid upload_type. Use "single_file" or "separate_files"'}), 400
+        
+        # Store file information in response
+        upload_info = {
+            'upload_type': upload_type,
+            'uploaded_files': uploaded_files,
+            'file_analysis': file_info,
+            'message': f'File(s) uploaded successfully - {upload_type} method'
+        }
+        
+        return jsonify(upload_info)
         
     except Exception as e:
+        # Clean up any uploaded files on error
+        for file_path in uploaded_files.values():
+            if os.path.exists(file_path):
+                os.remove(file_path)
         return jsonify({'error': str(e)}), 500
+
+
+def _process_uploaded_file(file, file_type):
+    """Process and save an uploaded file"""
+    # Check file extension
+    allowed_extensions = ['.csv', '.xlsx', '.xls']
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    if file_ext not in allowed_extensions:
+        raise ValueError(f'File type not supported. Use: {", ".join(allowed_extensions)}')
+    
+    # Secure the filename and save
+    filename = secure_filename(file.filename)
+    unique_filename = f"{uuid.uuid4().hex}_{file_type}_{filename}"
+    
+    upload_dir = current_app.config['UPLOAD_FOLDER']
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    file_path = os.path.join(upload_dir, unique_filename)
+    file.save(file_path)
+    
+    return unique_filename
+
+
+def _analyze_uploaded_file(filename):
+    """Analyze an uploaded file and return metadata"""
+    upload_dir = current_app.config['UPLOAD_FOLDER']
+    file_path = os.path.join(upload_dir, filename)
+    
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f'Uploaded file not found: {filename}')
+    
+    # Read file based on extension
+    file_ext = os.path.splitext(filename)[1].lower()
+    try:
+        if file_ext == '.csv':
+            df = pd.read_csv(file_path)
+        else:
+            df = pd.read_excel(file_path)
+        
+        # Basic validation
+        if df.empty:
+            os.remove(file_path)
+            raise ValueError('Uploaded file is empty')
+        
+        # Analyze numeric columns for potential features
+        numeric_columns = df.select_dtypes(include=['number']).columns.tolist()
+        categorical_columns = df.select_dtypes(include=['object', 'category']).columns.tolist()
+        
+        # Get dataset analysis
+        dataset_info = {
+            'filename': filename,
+            'file_path': file_path,
+            'rows': len(df),
+            'columns': len(df.columns),
+            'column_names': df.columns.tolist(),
+            'numeric_columns': numeric_columns,
+            'categorical_columns': categorical_columns,
+            'data_types': df.dtypes.astype(str).to_dict(),
+            'missing_values': df.isnull().sum().to_dict(),
+            'sample_data': df.head(3).to_dict('records'),
+            'potential_targets': categorical_columns[:5],  # First few categorical columns as potential targets
+            'feature_candidates': numeric_columns[:20]  # First 20 numeric columns as potential features
+        }
+        
+        return dataset_info
+        
+    except Exception as e:
+        # Clean up file on error
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise ValueError(f'Failed to process file: {str(e)}')
 
 
 @select_bp.route('/validate-config', methods=['POST'])
@@ -162,51 +232,156 @@ def validate_training_config():
             return jsonify({'error': 'No configuration provided'}), 400
         
         # Required fields
-        required_fields = ['model_type', 'dataset_source']
+        required_fields = ['model_type', 'dataset_source', 'target_column']
         missing_fields = [field for field in required_fields if field not in config]
         
         if missing_fields:
             return jsonify({'error': f'Missing required fields: {", ".join(missing_fields)}'}), 400
         
+        validation_results = {
+            'valid': True,
+            'warnings': [],
+            'errors': []
+        }
+        
         # Validate model type
         from services import ml_service
         available_models = ml_service.get_available_models()
         if config['model_type'] not in available_models:
-            return jsonify({'error': f'Invalid model type: {config["model_type"]}'}), 400
+            validation_results['errors'].append(f'Invalid model type: {config["model_type"]}')
+            validation_results['valid'] = False
         
-        # Validate dataset source
-        if config['dataset_source'] == 'nasa':
+        # Validate dataset source and specific requirements
+        dataset_source = config['dataset_source']
+        
+        if dataset_source == 'nasa':
             if 'dataset_name' not in config:
-                return jsonify({'error': 'Dataset name required for NASA datasets'}), 400
-            
-            available_datasets = ml_service.get_available_datasets()
-            if config['dataset_name'] not in available_datasets:
-                return jsonify({'error': f'Invalid dataset: {config["dataset_name"]}'}), 400
+                validation_results['errors'].append('Dataset name required for NASA datasets')
+                validation_results['valid'] = False
+            else:
+                available_datasets = ml_service.get_available_datasets()
+                if config['dataset_name'] not in available_datasets:
+                    validation_results['errors'].append(f'Invalid dataset: {config["dataset_name"]}')
+                    validation_results['valid'] = False
         
-        elif config['dataset_source'] == 'upload':
-            if 'uploaded_file' not in config:
-                return jsonify({'error': 'Uploaded file path required for custom datasets'}), 400
-        
+        elif dataset_source == 'upload':
+            if 'uploaded_files' not in config:
+                validation_results['errors'].append('Uploaded files configuration required for custom datasets')
+                validation_results['valid'] = False
+            else:
+                uploaded_files = config['uploaded_files']
+                upload_type = config.get('upload_type', 'single_file')
+                
+                if upload_type == 'single_file':
+                    if 'data_file' not in uploaded_files:
+                        validation_results['errors'].append('Data file required for single file upload')
+                        validation_results['valid'] = False
+                elif upload_type == 'separate_files':
+                    required_files = ['training_file', 'testing_file']
+                    for req_file in required_files:
+                        if req_file not in uploaded_files:
+                            validation_results['errors'].append(f'{req_file} required for separate files upload')
+                            validation_results['valid'] = False
+                else:
+                    validation_results['errors'].append('Invalid upload_type. Use "single_file" or "separate_files"')
+                    validation_results['valid'] = False
         else:
-            return jsonify({'error': 'Invalid dataset source. Use "nasa" or "upload"'}), 400
+            validation_results['errors'].append('Invalid dataset source. Use "nasa" or "upload"')
+            validation_results['valid'] = False
+        
+        # Validate target column
+        target_column = config.get('target_column')
+        if not target_column:
+            validation_results['errors'].append('Target column is required')
+            validation_results['valid'] = False
         
         # Validate hyperparameters if provided
-        if 'hyperparameters' in config:
-            valid_params = get_model_hyperparameters(config['model_type'])
-            invalid_params = [param for param in config['hyperparameters'] if param not in valid_params]
-            if invalid_params:
-                return jsonify({
-                    'warning': f'Unknown hyperparameters will be ignored: {", ".join(invalid_params)}',
-                    'valid_parameters': valid_params
-                })
+        if 'hyperparameters' in config and config['hyperparameters']:
+            try:
+                valid_params = get_model_hyperparameters(config['model_type'])
+                provided_params = list(config['hyperparameters'].keys())
+                invalid_params = [param for param in provided_params if param not in valid_params]
+                
+                if invalid_params:
+                    validation_results['warnings'].append(
+                        f'Unknown hyperparameters will be ignored: {", ".join(invalid_params)}'
+                    )
+                
+                # Validate hyperparameter values
+                for param, value in config['hyperparameters'].items():
+                    if param in valid_params:
+                        if not _validate_hyperparameter_value(config['model_type'], param, value):
+                            validation_results['warnings'].append(
+                                f'Invalid value for hyperparameter {param}: {value}'
+                            )
+            except Exception as e:
+                validation_results['warnings'].append(f'Could not validate hyperparameters: {str(e)}')
         
-        return jsonify({
-            'message': 'Configuration is valid',
-            'validated_config': config
-        })
+        # Validate test size if provided
+        test_size = config.get('test_size', 0.2)
+        if not isinstance(test_size, (int, float)) or test_size <= 0 or test_size >= 1:
+            validation_results['warnings'].append('test_size should be between 0 and 1, using default 0.2')
+            config['test_size'] = 0.2
+        
+        # Add configuration recommendations
+        recommendations = []
+        model_type = config['model_type']
+        
+        if model_type == 'random_forest':
+            recommendations.append('Random Forest works well with default parameters for most datasets')
+        elif model_type == 'xgboost':
+            recommendations.append('XGBoost may take longer to train but often provides better accuracy')
+        elif model_type == 'deep_learning':
+            recommendations.append('Deep Learning requires more data and training time but can capture complex patterns')
+        
+        # Prepare response
+        response = {
+            'validation_results': validation_results,
+            'validated_config': config,
+            'recommendations': recommendations
+        }
+        
+        if validation_results['valid']:
+            response['message'] = 'Configuration is valid and ready for training'
+            return jsonify(response)
+        else:
+            response['message'] = 'Configuration validation failed'
+            return jsonify(response), 400
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+def _validate_hyperparameter_value(model_type, param, value):
+    """Validate hyperparameter values based on model type and parameter"""
+    try:
+        # Basic validation rules for common hyperparameters
+        validations = {
+            'random_forest': {
+                'n_estimators': lambda x: isinstance(x, int) and x > 0,
+                'max_depth': lambda x: x is None or (isinstance(x, int) and x > 0),
+                'min_samples_split': lambda x: isinstance(x, (int, float)) and x >= 2,
+                'min_samples_leaf': lambda x: isinstance(x, (int, float)) and x >= 1
+            },
+            'xgboost': {
+                'n_estimators': lambda x: isinstance(x, int) and x > 0,
+                'learning_rate': lambda x: isinstance(x, (int, float)) and 0 < x <= 1,
+                'max_depth': lambda x: isinstance(x, int) and x > 0,
+                'subsample': lambda x: isinstance(x, (int, float)) and 0 < x <= 1
+            },
+            'svm': {
+                'C': lambda x: isinstance(x, (int, float)) and x > 0,
+                'gamma': lambda x: x == 'scale' or x == 'auto' or (isinstance(x, (int, float)) and x > 0)
+            }
+        }
+        
+        if model_type in validations and param in validations[model_type]:
+            return validations[model_type][param](value)
+        
+        return True  # Allow unknown parameters to pass through
+        
+    except Exception:
+        return False
 
 
 # Helper functions for dataset and model metadata

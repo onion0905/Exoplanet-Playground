@@ -183,8 +183,81 @@ function SelectPage() {
     }
   };
 
-  const handleStartTraining = () => {
-    navigate("/training");
+  const handleStartTraining = async () => {
+    try {
+      // Prepare configuration for backend
+      const trainingConfig = {
+        model_type: selectedModel,
+        dataset_source: dataSource,
+        target_column: dataSource === 'nasa' ? getDefaultTargetColumn(selectedDataset) : 'target',
+        hyperparameters: hyperparameters
+      };
+
+      // Add dataset-specific configuration
+      if (dataSource === 'nasa') {
+        trainingConfig.dataset_name = selectedDataset;
+      } else if (dataSource === 'user') {
+        // Handle file uploads
+        const uploadedFiles = {};
+        
+        if (uploadedFile && uploadedTestFile) {
+          // Upload both files
+          const formData = new FormData();
+          formData.append('upload_type', 'separate_files');
+          formData.append('training_file', uploadedFile);
+          formData.append('testing_file', uploadedTestFile);
+
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+          });
+
+          const uploadResult = await uploadResponse.json();
+          if (uploadResponse.ok) {
+            trainingConfig.uploaded_files = uploadResult.uploaded_files;
+            trainingConfig.upload_type = 'separate_files';
+          } else {
+            alert(`Upload failed: ${uploadResult.error}`);
+            return;
+          }
+        } else {
+          alert('Please select both training and testing files');
+          return;
+        }
+      }
+
+      // Start training
+      const response = await fetch('/api/training/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(trainingConfig)
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        // Store session ID in localStorage for tracking
+        localStorage.setItem('trainingSessionId', result.session_id);
+        localStorage.setItem('trainingConfig', JSON.stringify(trainingConfig));
+        navigate("/training");
+      } else {
+        alert(`Training failed to start: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error starting training:', error);
+      alert('Failed to start training. Please try again.');
+    }
+  };
+
+  const getDefaultTargetColumn = (dataset) => {
+    const targetColumns = {
+      'kepler': 'koi_disposition',
+      'tess': 'tfopwg_disp', 
+      'k2': 'disposition'
+    };
+    return targetColumns[dataset] || 'koi_disposition';
   };
 
   // 計算當前可以到達的最大步驟

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Training to Results Flow</title>
+</head>
+<body>
+    <h1>Test Training to Results Flow</h1>
+    <div id="status">Initializing...</div>
+    <div id="results"></div>
+    
+    <script>
+        async function testCompleteFlow() {
+            const status = document.getElementById('status');
+            const results = document.getElementById('results');
+            
+            try {
+                status.innerHTML = 'Starting training...';
+                
+                // Start training (simulate training page)
+                const trainingData = {
+                    dataset_name: 'kepler',
+                    dataset_source: 'nasa',
+                    target_column: 'koi_disposition',
+                    model_type: 'random_forest',
+                    hyperparameters: { n_estimators: 5, max_depth: 3 }
+                };
+                
+                const startResponse = await fetch('/api/training/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(trainingData)
+                });
+                
+                if (!startResponse.ok) {
+                    throw new Error(`Training start failed: ${startResponse.status}`);
+                }
+                
+                const startResult = await startResponse.json();
+                const sessionId = startResult.session_id;
+                
+                status.innerHTML = `Training started: ${sessionId}. Waiting for completion...`;
+                
+                // Poll for completion (simulate training page polling)
+                let completed = false;
+                let attempts = 0;
+                
+                while (!completed && attempts < 15) {
+                    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+                    attempts++;
+                    
+                    const progressResponse = await fetch(`/api/training/progress?session_id=${sessionId}`);
+                    const progressData = await progressResponse.json();
+                    
+                    status.innerHTML = `Training progress: ${progressData.progress}% - ${progressData.current_step}`;
+                    
+                    if (progressData.status === 'completed' || progressData.ready_for_results) {
+                        completed = true;
+                        status.innerHTML = 'Training completed! Fetching results...';
+                        
+                        // Fetch results like training page does
+                        const resultsResponse = await fetch(`/api/training/results?session_id=${sessionId}`);
+                        if (resultsResponse.ok) {
+                            const resultsData = await resultsResponse.json();
+                            
+                            // Store in localStorage like training page does
+                            console.log('Storing results in localStorage...');
+                            localStorage.setItem('trainingResults', JSON.stringify(resultsData));
+                            
+                            // Remove session ID like training page does
+                            localStorage.removeItem('trainingSessionId');
+                            
+                            status.innerHTML = 'Results stored in localStorage! Testing results page parsing...';
+                            
+                            // Now test the results page parsing logic
+                            testResultsPageParsing(resultsData);
+                            
+                        } else {
+                            throw new Error('Failed to fetch results');
+                        }
+                    } else if (progressData.status === 'failed') {
+                        throw new Error(`Training failed: ${progressData.error}`);
+                    }
+                }
+                
+                if (!completed) {
+                    throw new Error('Training timeout');
+                }
+                
+            } catch (error) {
+                status.innerHTML = `Error: ${error.message}`;
+                console.error(error);
+            }
+        }
+        
+        function testResultsPageParsing(originalData) {
+            const results = document.getElementById('results');
+            
+            // Simulate results page loading
+            console.log('=== SIMULATING RESULTS PAGE LOADING ===');
+            
+            // Get from localStorage like results page does
+            const storedResults = localStorage.getItem('trainingResults');
+            
+            if (storedResults) {
+                console.log('✅ Found stored results in localStorage');
+                const parsedResults = JSON.parse(storedResults);
+                console.log('Parsed results structure:', Object.keys(parsedResults));
+                console.log('Has testing_results:', !!parsedResults.testing_results);
+                console.log('Has predictions_table:', !!parsedResults.testing_results?.predictions_table);
+                console.log('Is predictions_table array:', Array.isArray(parsedResults.testing_results?.predictions_table));
+                console.log('Predictions count:', parsedResults.testing_results?.predictions_table?.length);
+                
+                // Test the exact condition from CustomResultPage.jsx
+                let testData = null;
+                
+                // Check for testing_results.predictions_table (new format)
+                if (parsedResults.testing_results?.predictions_table && Array.isArray(parsedResults.testing_results.predictions_table)) {
+                    console.log('✅ Using testing_results.predictions_table (new format)');
+                    testData = parsedResults.testing_results.predictions_table;
+                } else {
+                    console.log('❌ No valid test data found');
+                }
+                
+                if (testData) {
+                    console.log(`✅ Processing ${testData.length} test data items`);
+                    
+                    // Test the mapping logic
+                    const formattedResults = testData.map((item, index) => {
+                        let prediction, isPositive;
+                        const predLabel = item.predicted_label || item.prediction;
+                        
+                        if (predLabel === 'planet' || predLabel === 'CONFIRMED' || predLabel === 1) {
+                            prediction = "Confirmed Exoplanet";
+                            isPositive = true;
+                        } else if (predLabel === 'candidate' || predLabel === 'CANDIDATE') {
+                            prediction = "Exoplanet Candidate";  
+                            isPositive = true;
+                        } else if (predLabel === 'false_positive' || predLabel === 'FALSE POSITIVE' || predLabel === 0) {
+                            prediction = "False Positive";
+                            isPositive = false;
+                        } else {
+                            prediction = String(predLabel);
+                            isPositive = false;
+                        }
+                        
+                        return {
+                            id: index + 1,
+                            name: item.identifier || `Object ${index + 1}`,
+                            prediction: prediction,
+                            confidence: item.confidence || 0.5,
+                            actualLabel: item.actual_label || item.true_label,
+                            features: item.features || {},
+                            isPositive: isPositive
+                        };
+                    });
+                    
+                    console.log(`✅ Formatted ${formattedResults.length} results`);
+                    
+                    // Count predictions
+                    const predCounts = {};
+                    formattedResults.forEach(r => {
+                        predCounts[r.prediction] = (predCounts[r.prediction] || 0) + 1;
+                    });
+                    
+                    results.innerHTML = `
+                        <h2>✅ Results Page Parsing Test PASSED!</h2>
+                        <p><strong>Total Results:</strong> ${formattedResults.length}</p>
+                        <p><strong>Prediction Distribution:</strong></p>
+                        <ul>
+                            ${Object.entries(predCounts).map(([pred, count]) => 
+                                `<li>${pred}: ${count}</li>`
+                            ).join('')}
+                        </ul>
+                        <p><strong>Sample Results:</strong></p>
+                        <ul>
+                            ${formattedResults.slice(0, 5).map(r => 
+                                `<li>${r.name}: ${r.prediction} (${r.confidence.toFixed(3)})</li>`
+                            ).join('')}
+                        </ul>
+                        <p style="color: green;"><strong>The results page should display these results!</strong></p>
+                        <p>If you still see "No Results Available", check browser console for errors.</p>
+                    `;
+                    
+                } else {
+                    results.innerHTML = `
+                        <h2>❌ Results Page Parsing Test FAILED!</h2>
+                        <p>This would show "No Results Available"</p>
+                        <p>Check the data structure and parsing logic.</p>
+                    `;
+                }
+                
+            } else {
+                results.innerHTML = `
+                    <h2>❌ No localStorage Data Found!</h2>
+                    <p>The training page did not store results properly.</p>
+                `;
+            }
+        }
+        
+        // Start the test
+        testCompleteFlow();
+    </script>
+</body>
+</html>

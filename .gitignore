@@ -8,6 +8,8 @@ __pycache__/
 # Model files and user-generated models
 ML/models/user/
 ML/models/user/**
+.ML/
+.ML/**
 # Prevent pushing any joblib, pkl, or keras model files
 *.joblib
 *.pkl

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Frontend Debug Test</title>
+</head>
+<body>
+    <h1>Frontend Debug Test</h1>
+    <div id="output"></div>
+    
+    <script>
+        console.log('=== FRONTEND DEBUG TEST ===');
+        
+        // Simulate the exact data we know works
+        const testData = {
+            "model_info": {
+                "dataset_source": "nasa",
+                "name": "random_forest_kepler_test"
+            },
+            "testing_results": {
+                "predictions_table": [
+                    {
+                        "confidence": 0.95,
+                        "predicted_label": "false_positive",
+                        "true_label": "FALSE POSITIVE",
+                        "features": {},
+                        "index": 0
+                    },
+                    {
+                        "confidence": 0.87,
+                        "predicted_label": "planet",
+                        "true_label": "CONFIRMED",
+                        "features": {},
+                        "index": 1
+                    }
+                ]
+            }
+        };
+        
+        // Test the exact frontend parsing logic
+        console.log('Test data structure:', Object.keys(testData));
+        console.log('Has testing_results:', !!testData.testing_results);
+        console.log('Has predictions_table:', !!testData.testing_results?.predictions_table);
+        console.log('Is predictions_table array:', Array.isArray(testData.testing_results?.predictions_table));
+        
+        let processedData = null;
+        
+        // Test the condition from CustomResultPage.jsx
+        if (testData.testing_results?.predictions_table && Array.isArray(testData.testing_results.predictions_table)) {
+            console.log('✅ Condition passed!');
+            processedData = testData.testing_results.predictions_table;
+            
+            // Test the mapping logic
+            const formattedResults = processedData.map((item, index) => {
+                let prediction, isPositive;
+                const predLabel = item.predicted_label || item.prediction;
+                
+                if (predLabel === 'planet' || predLabel === 'CONFIRMED' || predLabel === 1) {
+                    prediction = "Confirmed Exoplanet";
+                    isPositive = true;
+                } else if (predLabel === 'candidate' || predLabel === 'CANDIDATE') {
+                    prediction = "Exoplanet Candidate";  
+                    isPositive = true;
+                } else if (predLabel === 'false_positive' || predLabel === 'FALSE POSITIVE' || predLabel === 0) {
+                    prediction = "False Positive";
+                    isPositive = false;
+                } else {
+                    prediction = String(predLabel);
+                    isPositive = false;
+                }
+                
+                return {
+                    id: index + 1,
+                    name: item.identifier || `Object ${index + 1}`,
+                    prediction: prediction,
+                    confidence: item.confidence || 0.5,
+                    actualLabel: item.actual_label || item.true_label,
+                    features: item.features || {},
+                    isPositive: isPositive
+                };
+            });
+            
+            console.log('✅ Formatted results:', formattedResults.length, 'items');
+            console.log('Sample result:', formattedResults[0]);
+            
+            document.getElementById('output').innerHTML = `
+                <h2>Results:</h2>
+                <p>Processed ${formattedResults.length} items</p>
+                <ul>
+                    ${formattedResults.map(r => `
+                        <li><strong>${r.name}</strong>: ${r.prediction} (${r.confidence.toFixed(3)})</li>
+                    `).join('')}
+                </ul>
+            `;
+        } else {
+            console.log('❌ Condition failed');
+            document.getElementById('output').innerHTML = '<p style="color: red;">Condition failed - this would show "No Results Available"</p>';
+        }
+        
+        // Test localStorage simulation
+        console.log('\n=== TESTING LOCALSTORAGE ===');
+        localStorage.setItem('testResults', JSON.stringify(testData));
+        const retrieved = localStorage.getItem('testResults');
+        console.log('Stored and retrieved successfully:', !!retrieved);
+        
+        if (retrieved) {
+            const parsed = JSON.parse(retrieved);
+            console.log('Parsed successfully:', !!parsed.testing_results);
+        }
+        
+    </script>
+</body>
+</html>

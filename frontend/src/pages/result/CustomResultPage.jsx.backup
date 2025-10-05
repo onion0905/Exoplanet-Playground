@@ -1,0 +1,676 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import Navbar from "../../components/Navbar";
+import { 
+  Button, 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow, 
+  Paper,
+  Typography,
+  Box,
+  Chip,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  LinearProgress,
+  Card,
+  CardContent
+} from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import AddIcon from '@mui/icons-material/Add';
+import DownloadIcon from '@mui/icons-material/Download';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+
+function CustomResultPage() {
+  const navigate = useNavigate();
+  const [expandedRows, setExpandedRows] = useState({});
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedPlanet, setSelectedPlanet] = useState(null);
+  const [results, setResults] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [predictionResults, setPredictionResults] = useState([]);
+
+  useEffect(() => {
+    const loadResults = async () => {
+      try {
+        // First try to get results from localStorage (from training page)
+        const storedResults = localStorage.getItem('trainingResults');
+        
+        if (storedResults) {
+          const parsedResults = JSON.parse(storedResults);
+          console.log('Parsed results structure:', parsedResults);
+          console.log('Top-level keys:', Object.keys(parsedResults));
+          console.log('Has testing_results:', !!parsedResults.testing_results);
+          console.log('Has predictions_table:', !!parsedResults.testing_results?.predictions_table);
+          console.log('Is predictions_table array:', Array.isArray(parsedResults.testing_results?.predictions_table));
+          console.log('Predictions count:', parsedResults.testing_results?.predictions_table?.length);
+          
+          setResults(parsedResults);
+          
+          // Handle different result data structures
+          let testData = null;
+          
+          // Check for test_data (old format)
+          if (parsedResults.test_data && Array.isArray(parsedResults.test_data)) {
+            console.log('Using test_data (old format)');
+            testData = parsedResults.test_data;
+          }
+          // Check for testing_results.predictions_table (new format)
+          else if (parsedResults.testing_results?.predictions_table && Array.isArray(parsedResults.testing_results.predictions_table)) {
+            console.log('Using testing_results.predictions_table (new format)');
+            testData = parsedResults.testing_results.predictions_table;
+          } else {
+            console.log('No valid test data found in either format');
+          }
+          
+          if (testData) {
+            console.log('Processing', testData.length, 'test data items');
+            const formattedResults = testData.map((item, index) => {
+              // Handle three-class prediction: planet, candidate, false_positive
+              let prediction, isPositive;
+              const predLabel = item.predicted_label || item.prediction;
+              
+              if (predLabel === 'planet' || predLabel === 'CONFIRMED' || predLabel === 1) {
+                prediction = "Confirmed Exoplanet";
+                isPositive = true;
+              } else if (predLabel === 'candidate' || predLabel === 'CANDIDATE') {
+                prediction = "Exoplanet Candidate";  
+                isPositive = true;
+              } else if (predLabel === 'false_positive' || predLabel === 'FALSE POSITIVE' || predLabel === 0) {
+                prediction = "False Positive";
+                isPositive = false;
+              } else {
+                prediction = String(predLabel);
+                isPositive = false;
+              }
+              
+              return {
+                id: index + 1,
+                name: item.identifier || `Object ${index + 1}`,
+                prediction: prediction,
+                confidence: item.confidence || 0.5,
+                actualLabel: item.actual_label || item.true_label,
+                features: item.features || {},
+                reasons: item.explanation || [
+                  isPositive ? 
+                    "Model identified exoplanet or candidate characteristics in the data" : 
+                    "Model classified as false positive based on feature patterns"
+                ],
+                isPositive: isPositive
+              };
+            });
+            console.log('Formatted results count:', formattedResults.length);
+            console.log('Setting prediction results...');
+            setPredictionResults(formattedResults);
+            console.log('Prediction results set successfully');
+          } else {
+            console.log('No test data to process');
+          }
+          
+          localStorage.removeItem('trainingResults'); // Clean up
+        } else {
+          // If no stored results, try to fetch from backend
+          const sessionId = localStorage.getItem('trainingSessionId');
+          if (sessionId) {
+            const response = await fetch(`/api/training/results?session_id=${sessionId}`);
+            if (response.ok) {
+              const backendResults = await response.json();
+              console.log('Backend results structure:', Object.keys(backendResults));
+              console.log('Backend has testing_results:', !!backendResults.testing_results);
+              console.log('Backend has predictions_table:', !!backendResults.testing_results?.predictions_table);
+              
+              setResults(backendResults);
+              
+              // Format backend results 
+              let testData = null;
+              
+              // Check for test_data (old format)
+              if (backendResults.test_data && Array.isArray(backendResults.test_data)) {
+                console.log('Using backend test_data (old format)');
+                testData = backendResults.test_data;
+              }
+              // Check for testing_results.predictions_table (new format)
+              else if (backendResults.testing_results?.predictions_table && Array.isArray(backendResults.testing_results.predictions_table)) {
+                console.log('Using backend testing_results.predictions_table (new format)');
+                testData = backendResults.testing_results.predictions_table;
+              } else {
+                console.log('No valid backend test data found');
+              }
+              
+              if (testData) {
+                const formattedResults = testData.map((item, index) => {
+                  // Handle three-class prediction: planet, candidate, false_positive
+                  let prediction, isPositive;
+                  const predLabel = item.predicted_label || item.prediction;
+                  
+                  if (predLabel === 'planet' || predLabel === 'CONFIRMED' || predLabel === 1) {
+                    prediction = "Confirmed Exoplanet";
+                    isPositive = true;
+                  } else if (predLabel === 'candidate' || predLabel === 'CANDIDATE') {
+                    prediction = "Exoplanet Candidate";  
+                    isPositive = true;
+                  } else if (predLabel === 'false_positive' || predLabel === 'FALSE POSITIVE' || predLabel === 0) {
+                    prediction = "False Positive";
+                    isPositive = false;
+                  } else {
+                    prediction = String(predLabel);
+                    isPositive = false;
+                  }
+                  
+                  return {
+                    id: index + 1,
+                    name: item.identifier || `Object ${index + 1}`,
+                    prediction: prediction,
+                    confidence: item.confidence || 0.5,
+                    actualLabel: item.actual_label || item.true_label,
+                    features: item.features || {},
+                    reasons: item.explanation || [
+                      isPositive ? 
+                        "Model identified exoplanet or candidate characteristics in the data" : 
+                        "Model classified as false positive based on feature patterns"
+                    ],
+                    isPositive: isPositive
+                  };
+                });
+                setPredictionResults(formattedResults);
+              }
+            } else {
+              console.error('Failed to fetch results from backend');
+              // Set default empty results
+              setPredictionResults([]);
+            }
+          } else {
+            // No session ID, might be a direct navigation
+            console.warn('No training session found, using demo data');
+            setPredictionResults([]);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading results:', error);
+        setPredictionResults([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadResults();
+  }, []);
+
+  const handleExpandRow = (planetId) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [planetId]: !prev[planetId]
+    }));
+  };
+
+  const handleView3D = (planet) => {
+    setSelectedPlanet(planet);
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setSelectedPlanet(null);
+  };
+
+  const handleDownloadResults = () => {
+    // 模擬下載功能
+    const csvContent = "data:text/csv;charset=utf-8," + 
+      "Planet Name,Prediction,Confidence\n" +
+      predictionResults.map(planet => 
+        `${planet.name},${planet.prediction},${planet.confidence}`
+      ).join("\n");
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "exoplanet_predictions.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const getConfidenceColor = (confidence) => {
+    if (confidence >= 0.9) return '#10b981'; // green
+    if (confidence >= 0.8) return '#f59e0b'; // yellow
+    return '#ef4444'; // red
+  };
+
+  const getPredictionColor = (prediction) => {
+    return prediction === 'Exoplanet' ? '#10b981' : '#ef4444';
+  };
+
+  return (
+    <div className="relative w-full min-h-screen bg-[#14171e] overflow-hidden">
+      <img
+        className="absolute top-20 left-0 w-full h-[calc(100vh-5rem)] object-cover"
+        alt="Space background"
+        src="/background.svg"
+      />
+
+      <Navbar />
+
+      <main className="relative z-10 px-[3.375rem] pt-32 max-w-7xl mx-auto">
+        <div className="text-center mb-16">
+          <h1 className="font-bold text-white text-5xl mb-6">
+            Prediction Results
+          </h1>
+          <p className="text-white text-xl mb-8">
+            {loading ? 'Loading results...' : 
+             predictionResults.length > 0 ? 'Analysis complete! Here are the exoplanet classification results.' :
+             'No results available. Please train a model first.'}
+          </p>
+        </div>
+
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-12">
+            <LinearProgress 
+              sx={{
+                width: 300,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                margin: '0 auto',
+                '& .MuiLinearProgress-bar': {
+                  background: 'linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)',
+                  borderRadius: 4,
+                },
+              }}
+            />
+            <Typography variant="h6" className="text-white mt-4">
+              Loading results...
+            </Typography>
+          </div>
+        )}
+
+        {/* Model Performance Metrics */}
+        {!loading && (results?.metrics || results?.testing_results?.summary_metrics) && (
+          <Card className="bg-gradient-to-br from-purple-800/60 to-purple-900/60 backdrop-blur-sm border border-purple-600/30 shadow-2xl mb-8">
+            <CardContent className="p-6">
+              <Typography variant="h5" className="text-white font-semibold mb-4">
+                Model Performance
+              </Typography>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <Typography variant="h4" className="text-purple-400 font-bold mb-1">
+                    {((results.metrics?.accuracy || results.testing_results?.summary_metrics?.accuracy || 0) * 100).toFixed(1)}%
+                  </Typography>
+                  <Typography variant="body2" className="text-white">Accuracy</Typography>
+                </div>
+                <div className="text-center">
+                  <Typography variant="h4" className="text-blue-400 font-bold mb-1">
+                    {((results.metrics?.precision || results.testing_results?.summary_metrics?.precision || 0) * 100).toFixed(1)}%
+                  </Typography>
+                  <Typography variant="body2" className="text-white">Precision</Typography>
+                </div>
+                <div className="text-center">
+                  <Typography variant="h4" className="text-green-400 font-bold mb-1">
+                    {((results.metrics?.recall || results.testing_results?.summary_metrics?.recall || 0) * 100).toFixed(1)}%
+                  </Typography>
+                  <Typography variant="body2" className="text-white">Recall</Typography>
+                </div>
+                <div className="text-center">
+                  <Typography variant="h4" className="text-yellow-400 font-bold mb-1">
+                    {((results.metrics?.f1_score || results.testing_results?.summary_metrics?.f1_score || 0) * 100).toFixed(1)}%
+                  </Typography>
+                  <Typography variant="body2" className="text-white">F1-Score</Typography>
+                </div>
+              </div>
+              
+              {/* Confusion Matrix */}
+              {results.testing_results?.confusion_matrix && (
+                <div className="mt-6">
+                  <Typography variant="h6" className="text-white font-semibold mb-4">
+                    Three-Class Confusion Matrix
+                  </Typography>
+                  <div className="bg-gray-800/50 rounded-lg p-4 max-w-2xl mx-auto">
+                    {(() => {
+                      const cm = results.testing_results.confusion_matrix;
+                      const matrix = cm.matrix;
+                      const labels = cm.labels; // ['false_positive', 'candidate', 'planet']
+                      
+                      return (
+                        <div className="grid grid-cols-4 gap-2 text-center text-sm">
+                          {/* Header row */}
+                          <div></div>
+                          <div className="text-gray-300 font-medium">Pred: False Positive</div>
+                          <div className="text-gray-300 font-medium">Pred: Candidate</div>
+                          <div className="text-gray-300 font-medium">Pred: Planet</div>
+                          
+                          {/* Matrix rows */}
+                          {labels.map((trueLabel, i) => (
+                            <React.Fragment key={trueLabel}>
+                              <div className="text-gray-300 font-medium">
+                                Actual: {trueLabel === 'false_positive' ? 'False Positive' : 
+                                        trueLabel === 'candidate' ? 'Candidate' : 'Planet'}
+                              </div>
+                              {matrix[i].map((value, j) => (
+                                <div key={j} className={`p-3 rounded text-white font-bold ${
+                                  i === j ? 'bg-green-600/30' : 'bg-red-600/30'
+                                }`}>
+                                  {value}
+                                </div>
+                              ))}
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 結果統計卡片 */}
+        {!loading && predictionResults.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <Card className="bg-gradient-to-br from-green-800/60 to-green-900/60 backdrop-blur-sm border border-green-600/30">
+              <CardContent className="text-center p-6">
+                <Typography variant="h4" className="text-green-400 font-bold mb-2">
+                  {predictionResults.filter(p => p.prediction === 'Confirmed Exoplanet').length}
+                </Typography>
+                <Typography variant="body1" className="text-white">
+                  Confirmed Exoplanets
+                </Typography>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-gradient-to-br from-yellow-800/60 to-yellow-900/60 backdrop-blur-sm border border-yellow-600/30">
+              <CardContent className="text-center p-6">
+                <Typography variant="h4" className="text-yellow-400 font-bold mb-2">
+                  {predictionResults.filter(p => p.prediction === 'Exoplanet Candidate').length}
+                </Typography>
+                <Typography variant="body1" className="text-white">
+                  Candidates
+                </Typography>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-gradient-to-br from-red-800/60 to-red-900/60 backdrop-blur-sm border border-red-600/30">
+              <CardContent className="text-center p-6">
+                <Typography variant="h4" className="text-red-400 font-bold mb-2">
+                  {predictionResults.filter(p => p.prediction === 'False Positive').length}
+                </Typography>
+                <Typography variant="body1" className="text-white">
+                  False Positives
+                </Typography>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-gradient-to-br from-blue-800/60 to-blue-900/60 backdrop-blur-sm border border-blue-600/30">
+              <CardContent className="text-center p-6">
+                <Typography variant="h4" className="text-blue-400 font-bold mb-2">
+                  {predictionResults.length > 0 ? 
+                    (predictionResults.reduce((acc, p) => acc + p.confidence, 0) / predictionResults.length * 100).toFixed(1) : 0}%
+                </Typography>
+                <Typography variant="body1" className="text-white">
+                  Average Confidence
+                </Typography>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* 預測結果表格 */}
+        {!loading && predictionResults.length > 0 && (
+        <Card className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 shadow-2xl mb-8">
+          <CardContent className="p-0">
+            <div className="p-6 border-b border-gray-600/30">
+              <div className="flex items-center justify-between">
+                <Typography variant="h5" className="text-white font-semibold">
+                  Detailed Results
+                </Typography>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outlined"
+                    startIcon={<AddIcon />}
+                    onClick={() => navigate("/select")}
+                    sx={{
+                      color: 'white',
+                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                      '&:hover': {
+                        borderColor: 'white',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                      }
+                    }}
+                  >
+                    Train New Model
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<DownloadIcon />}
+                    onClick={handleDownloadResults}
+                    sx={{
+                      backgroundColor: '#2563eb',
+                      '&:hover': {
+                        backgroundColor: '#1d4ed8'
+                      }
+                    }}
+                  >
+                    Download Results
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow className="bg-gray-700/30">
+                    <TableCell className="text-white font-semibold">Planet Name</TableCell>
+                    <TableCell className="text-white font-semibold">Prediction</TableCell>
+                    <TableCell className="text-white font-semibold">Confidence</TableCell>
+                    <TableCell className="text-white font-semibold">3D View</TableCell>
+                    <TableCell className="text-white font-semibold">Details</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {predictionResults.map((planet) => (
+                    <React.Fragment key={planet.id}>
+                      <TableRow className="hover:bg-gray-700/20">
+                        <TableCell className="text-white font-medium">
+                          {planet.name}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={planet.prediction}
+                            sx={{
+                              backgroundColor: getPredictionColor(planet.prediction),
+                              color: 'white',
+                              fontWeight: 'bold'
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Box className="flex items-center gap-2">
+                            <LinearProgress
+                              variant="determinate"
+                              value={planet.confidence * 100}
+                              sx={{
+                                width: 100,
+                                height: 8,
+                                borderRadius: 4,
+                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                '& .MuiLinearProgress-bar': {
+                                  backgroundColor: getConfidenceColor(planet.confidence),
+                                  borderRadius: 4,
+                                },
+                              }}
+                            />
+                            <Typography variant="body2" className="text-white">
+                              {(planet.confidence * 100).toFixed(1)}%
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          {planet.isPositive && (
+                            <IconButton
+                              onClick={() => handleView3D(planet)}
+                              sx={{
+                                color: '#60a5fa',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(96, 165, 250, 0.1)'
+                                }
+                              }}
+                            >
+                              <VisibilityIcon />
+                            </IconButton>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <IconButton
+                            onClick={() => handleExpandRow(planet.id)}
+                            sx={{
+                              color: 'white',
+                              '&:hover': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                              }
+                            }}
+                          >
+                            {expandedRows[planet.id] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                      {expandedRows[planet.id] && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="bg-gray-800/30 p-6">
+                            <Typography variant="h6" className="text-white font-semibold mb-4">
+                              Prediction Reasoning:
+                            </Typography>
+                            <ul className="list-disc list-inside space-y-2">
+                              {planet.reasons.map((reason, index) => (
+                                <li key={index} className="text-gray-300">
+                                  {reason}
+                                </li>
+                              ))}
+                            </ul>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+        )}
+
+        {/* No Results Available */}
+        {!loading && predictionResults.length === 0 && (
+          <Card className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 backdrop-blur-sm border border-gray-600/30 shadow-2xl mb-8">
+            <CardContent className="text-center p-12">
+              <Typography variant="h5" className="text-white font-semibold mb-4">
+                No Results Available
+              </Typography>
+              <Typography variant="body1" className="text-gray-300 mb-6">
+                No training results found. Please train a model first to see prediction results.
+              </Typography>
+              <Button
+                variant="contained"
+                size="large"
+                onClick={() => navigate("/select")}
+                sx={{
+                  backgroundColor: '#2563eb',
+                  px: 4,
+                  py: 2,
+                  fontSize: '1.125rem',
+                  '&:hover': {
+                    backgroundColor: '#1d4ed8'
+                  }
+                }}
+              >
+                Train New Model
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 底部操作按鈕 */}
+        <div className="flex justify-center gap-6 mb-10">
+          <Button
+            variant="outlined"
+            size="large"
+            onClick={() => navigate("/select")}
+            sx={{
+              color: '#f5eff7',
+              borderColor: '#f5eff7',
+              px: 4,
+              py: 2,
+              fontSize: '1.125rem',
+              '&:hover': {
+                borderColor: '#f5eff7',
+                backgroundColor: 'rgba(245, 239, 247, 0.1)'
+              }
+            }}
+          >
+            Train New Model
+          </Button>
+        </div>
+      </main>
+
+      {/* 3D 可視化對話框 */}
+      <Dialog
+        open={openDialog}
+        onClose={handleCloseDialog}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            backgroundColor: 'rgba(20, 23, 30, 0.95)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '16px'
+          }
+        }}
+      >
+        <DialogTitle className="text-white font-semibold">
+          3D Visualization - {selectedPlanet?.name}
+        </DialogTitle>
+        <DialogContent>
+          <div className="h-96 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-lg flex items-center justify-center border border-gray-600/30">
+            <div className="text-center">
+              <div className="w-32 h-32 mx-auto mb-4 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full flex items-center justify-center">
+                <span className="text-6xl">🌍</span>
+              </div>
+              <Typography variant="h6" className="text-white mb-2">
+                3D Planet Visualization
+              </Typography>
+              <Typography variant="body2" className="text-gray-300">
+                Interactive 3D model of {selectedPlanet?.name}
+              </Typography>
+              <Typography variant="body2" className="text-gray-400 mt-2">
+                (This would be a real 3D visualization in production)
+              </Typography>
+            </div>
+          </div>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={handleCloseDialog}
+            sx={{
+              color: 'white',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+              }
+            }}
+          >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </div>
+  );
+}
+
+export default CustomResultPage;

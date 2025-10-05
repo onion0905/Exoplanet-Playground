@@ -13,10 +13,8 @@ from .results import results_bp
 def register_blueprints(app):
     """Register all blueprints with the Flask application"""
     
-    # Register blueprints with API prefix
-    api_prefix = app.config.get('API_PREFIX', '/api')
-    
-    app.register_blueprint(home_bp, url_prefix=api_prefix)
-    app.register_blueprint(select_bp, url_prefix=api_prefix)
-    app.register_blueprint(training_bp, url_prefix=api_prefix)
-    app.register_blueprint(results_bp, url_prefix=api_prefix)
+    # Register blueprints with proper API prefixes
+    app.register_blueprint(home_bp, url_prefix='/api')
+    app.register_blueprint(select_bp, url_prefix='/api')
+    app.register_blueprint(training_bp, url_prefix='/api/training')
+    app.register_blueprint(results_bp, url_prefix='/api')

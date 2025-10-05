@@ -9,48 +9,70 @@ function TrainingPage() {
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState('Initializing...');
   const [isComplete, setIsComplete] = useState(false);
-
-  // 模擬訓練步驟
-  const trainingSteps = [
-    { step: 'Initializing...', duration: 1000 },
-    { step: 'Loading dataset...', duration: 2000 },
-    { step: 'Preprocessing data...', duration: 3000 },
-    { step: 'Training model...', duration: 4000 },
-    { step: 'Validating results...', duration: 2000 },
-    { step: 'Saving model...', duration: 1000 },
-    { step: 'Training complete!', duration: 500 }
-  ];
+  const [trainingConfig, setTrainingConfig] = useState({});
+  const [sessionId, setSessionId] = useState(null);
 
   useEffect(() => {
-    let currentStepIndex = 0;
-    let totalDuration = 0;
+    // Get session ID and config from localStorage
+    const storedSessionId = localStorage.getItem('trainingSessionId');
+    const storedConfig = localStorage.getItem('trainingConfig');
     
-    // 計算總時長
-    const totalTime = trainingSteps.reduce((acc, step) => acc + step.duration, 0);
-    
-    const interval = setInterval(() => {
-      if (currentStepIndex < trainingSteps.length) {
-        const step = trainingSteps[currentStepIndex];
-        setCurrentStep(step.step);
-        
-        // 更新進度
-        const stepProgress = ((currentStepIndex + 1) / trainingSteps.length) * 100;
-        setProgress(stepProgress);
-        
-        // 如果是最後一步，標記為完成
-        if (currentStepIndex === trainingSteps.length - 1) {
-          setIsComplete(true);
-          setTimeout(() => {
-            navigate("/custom_result");
-          }, 2000); // 2秒後跳轉到 result 頁面
-        }
-        
-        currentStepIndex++;
+    if (!storedSessionId) {
+      // If no session ID, redirect back to select page
+      navigate('/select');
+      return;
+    }
+
+    setSessionId(storedSessionId);
+    if (storedConfig) {
+      try {
+        setTrainingConfig(JSON.parse(storedConfig));
+      } catch (e) {
+        console.error('Failed to parse training config:', e);
       }
-    }, 1000);
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const pollProgress = async () => {
+      try {
+        const response = await fetch(`/api/training/progress?session_id=${sessionId}`);
+        const data = await response.json();
+        
+        if (response.ok) {
+          setProgress(data.progress);
+          setCurrentStep(data.current_step);
+          
+          // Check for completion
+          if (data.status === 'completed') {
+            setIsComplete(true);
+            
+            // Keep session ID for results page to fetch data
+            // No need to pre-fetch results here
+            
+            setTimeout(() => {
+              navigate("/custom_result");
+            }, 2000); // 2 second delay before redirect
+          }
+        } else {
+          console.error('Failed to get progress:', data.error);
+          setCurrentStep('Error occurred during training');
+        }
+      } catch (error) {
+        console.error('Error polling progress:', error);
+        setCurrentStep('Connection error');
+      }
+    };
+
+    // Poll every 2 seconds
+    const interval = setInterval(pollProgress, 2000);
+    // Initial poll
+    pollProgress();
 
     return () => clearInterval(interval);
-  }, [navigate]);
+  }, [sessionId, navigate]);
 
   return (
     <div className="relative w-full min-h-screen bg-[#14171e] overflow-hidden">
@@ -110,7 +132,9 @@ function TrainingPage() {
                 Dataset
               </Typography>
               <Typography variant="body2" className="text-gray-300">
-                NASA Kepler
+                {trainingConfig.dataset_source === 'nasa' 
+                  ? `NASA ${trainingConfig.dataset_name?.toUpperCase() || 'Kepler'}`
+                  : 'Custom Upload'}
               </Typography>
             </div>
             <div className="p-4 bg-gray-700/30 rounded-xl backdrop-blur-sm border border-gray-600/30">
@@ -118,15 +142,18 @@ function TrainingPage() {
                 Model
               </Typography>
               <Typography variant="body2" className="text-gray-300">
-                Random Forest
+                {trainingConfig.model_type === 'rf' ? 'Random Forest' :
+                 trainingConfig.model_type === 'xgb' ? 'XGBoost' :
+                 trainingConfig.model_type === 'nn' ? 'Neural Network' :
+                 'Random Forest'}
               </Typography>
             </div>
             <div className="p-4 bg-gray-700/30 rounded-xl backdrop-blur-sm border border-gray-600/30">
               <Typography variant="h6" className="text-purple-400 font-semibold mb-1">
-                ETA
+                Status
               </Typography>
               <Typography variant="body2" className="text-gray-300">
-                {isComplete ? 'Complete!' : '~2 min'}
+                {isComplete ? 'Complete!' : 'Training...'}
               </Typography>
             </div>
           </div>

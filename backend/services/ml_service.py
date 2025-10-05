@@ -18,7 +18,7 @@ from ML.src.api.explanation_api import ExplanationAPI
 
 
 class MLService:
-    """Service class that wraps ML API operations for web endpoints"""
+    """Service class that wraps ML API operations for web endpoints with three-class prediction support"""
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
