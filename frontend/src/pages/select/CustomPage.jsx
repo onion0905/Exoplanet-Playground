@@ -15,7 +15,10 @@ import {
   Card,
   CardContent,
   Typography,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
+import { customTraining } from '../../lib/api';
 
 function CustomPage() {
   const navigate = useNavigate();
@@ -28,6 +31,8 @@ function CustomPage() {
   const [dragActive, setDragActive] = useState(false);
   const [dragActiveTest, setDragActiveTest] = useState(false);
   const [hyperparameters, setHyperparameters] = useState({});
+  const [isTraining, setIsTraining] = useState(false);
+  const [error, setError] = useState(null);
   
   // 用戶上傳數據的格式選擇
   const [selectedTrainingFormat, setSelectedTrainingFormat] = useState('kepler');
@@ -223,6 +228,46 @@ function CustomPage() {
   const handleNextStep = () => {
     if (canGoToNextStep() && currentStep < 3) {
       setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handleStartTraining = async () => {
+    setIsTraining(true);
+    setError(null);
+
+    try {
+      // Prepare training configuration
+      const config = {
+        model_type: selectedModel,
+        data_source: dataSource,
+        hyperparameters: hyperparameters
+      };
+
+      if (dataSource === 'nasa') {
+        config.dataset_name = selectedDataset;
+      } else {
+        config.data_format = selectedTrainingFormat;
+        config.training_file = uploadedFile;
+        config.testing_file = uploadedTestFile;
+      }
+
+      // Start training
+      const response = await customTraining.startTraining(config);
+      
+      if (response.success) {
+        // Store session ID in sessionStorage
+        sessionStorage.setItem('custom_session_id', response.session_id);
+        
+        // Navigate to progress page
+        navigate("/custom/progress");
+      } else {
+        setError(response.error || 'Failed to start training');
+        setIsTraining(false);
+      }
+    } catch (err) {
+      console.error('Training error:', err);
+      setError(err.message || 'An error occurred while starting training');
+      setIsTraining(false);
     }
   };
 
@@ -878,13 +923,18 @@ function CustomPage() {
             </div>
 
             {/* Start Training Button for Step 3 */}
+            {error && (
+              <Alert severity="error" sx={{ mt: 4 }}>
+                {error}
+              </Alert>
+            )}
             <div className="text-center mt-8">
               <Button
                 variant="contained"
                 size="large"
-                startIcon={<PlayArrowIcon />}
-                onClick={() => navigate("/custom/progress")}
-                disabled={!isTrainingReady}
+                startIcon={isTraining ? <CircularProgress size={20} color="inherit" /> : <PlayArrowIcon />}
+                onClick={handleStartTraining}
+                disabled={!isTrainingReady || isTraining}
                 sx={{
                   backgroundColor: '#2563eb',
                   '&:hover': {
@@ -899,7 +949,7 @@ function CustomPage() {
                   fontSize: '1.125rem'
                 }}
               >
-                Start Training!
+                {isTraining ? 'Starting Training...' : 'Start Training!'}
               </Button>
             </div>
           </div>

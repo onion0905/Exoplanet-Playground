@@ -284,9 +284,10 @@ class TrainingAPI:
                 del session['data']
             if 'prepared_data' in session:
                 del session['prepared_data']
-        if 'model' in session and hasattr(session['model'], 'get_model_info'):
-            session['model'] = session['model'].get_model_info()
-        # Always include prepared_data if include_data is True
+            # Convert model to dict only when include_data=False (for API responses)
+            if 'model' in session and hasattr(session['model'], 'get_model_info'):
+                session['model'] = session['model'].get_model_info()
+        # When include_data=True, keep model object and prepared_data for predictions
         return {
             'session_id': session_id,
             'status': 'success',

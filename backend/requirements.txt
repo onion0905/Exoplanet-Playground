@@ -1,0 +1,11 @@
+# Backend Requirements for Exoplanet Playground
+
+# Web Framework
+Flask==2.3.3
+Flask-CORS==4.0.0
+
+# The ML dependencies are in the root requirements.txt
+# This file only contains backend-specific dependencies
+
+# Utilities
+python-dotenv==1.0.0
